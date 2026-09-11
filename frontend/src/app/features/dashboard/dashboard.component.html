@@ -39,8 +39,17 @@
           <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/asl" routerLinkActive="active" class="dashboard-nav-group-link">
             {{ t('dashboard.menu.asl') }}
           </a>
+          <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/asl/import" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.aslImport') }}
+          </a>
           <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/hospitals" routerLinkActive="active" class="dashboard-nav-group-link">
             {{ t('dashboard.menu.hospital') }}
+          </a>
+          <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/hospitals/import" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.hospitalImport') }}
+          </a>
+          <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/structure-departments" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.structureDepartments') }}
           </a>
         </div>
       </div>

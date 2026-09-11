@@ -11,7 +11,10 @@ import { MedicinesCrudComponent } from './features/medicines/medicines-crud.comp
 import { ProjectsSearchComponent } from './features/projects/projects-search.component';
 import { ProjectsCrudComponent } from './features/projects/projects-crud.component';
 import { AslManagementComponent } from './features/asl/asl-management.component';
+import { AslImportComponent } from './features/asl/asl-import.component';
+import { HospitalImportComponent } from './features/hospitals/hospital-import.component';
 import { HospitalManagementComponent } from './features/hospitals/hospital-management.component';
+import { StructureDepartmentsManagementComponent } from './features/structure-departments/structure-departments-management.component';
 
 /**
  * Definizione rotte applicative minime: login pubblico e dashboard protetta.
@@ -37,7 +40,10 @@ export const appRoutes: Routes = [
       { path: 'projects/new', component: ProjectsCrudComponent, canActivate: [authGuard] },
       { path: 'projects/:id', component: ProjectsCrudComponent, canActivate: [authGuard] },
       { path: 'asl', component: AslManagementComponent, canActivate: [authGuard] },
-      { path: 'hospitals', component: HospitalManagementComponent, canActivate: [authGuard] }
+      { path: 'asl/import', component: AslImportComponent, canActivate: [authGuard] },
+      { path: 'hospitals', component: HospitalManagementComponent, canActivate: [authGuard] },
+      { path: 'hospitals/import', component: HospitalImportComponent, canActivate: [authGuard] }
+      ,{ path: 'structure-departments', component: StructureDepartmentsManagementComponent, canActivate: [authGuard] }
     ]
   },
   { path: 'patients/search', pathMatch: 'full', redirectTo: 'dashboard/patients/search' },
