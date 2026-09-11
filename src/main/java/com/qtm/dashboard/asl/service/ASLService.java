@@ -8,6 +8,10 @@ import com.qtm.dashboard.asl.dto.ASLOverviewDto;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.mapper.ASLMapper;
 import com.qtm.dashboard.asl.repository.ASLRepository;
+import com.qtm.dashboard.domain.City;
+import com.qtm.dashboard.domain.Region;
+import com.qtm.dashboard.repository.CityRepository;
+import com.qtm.dashboard.repository.RegionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +36,8 @@ public class ASLService {
 
     private final ASLRepository aslRepository;
     private final ASLMapper aslMapper;
+    private final CityRepository cityRepository;
+    private final RegionRepository regionRepository;
     private final RestClient restClient;
     private final String ticketBaseUrl;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -40,10 +46,14 @@ public class ASLService {
     public ASLService(
             ASLRepository aslRepository,
             ASLMapper aslMapper,
+            CityRepository cityRepository,
+            RegionRepository regionRepository,
             @Value("${app.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
+        this.cityRepository = cityRepository;
+        this.regionRepository = regionRepository;
         this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
         // RestClient usato per chiamare le API QTMTicket; la base URL è configurabile in application.properties
         this.restClient = RestClient.builder().baseUrl(this.ticketBaseUrl).build();
@@ -53,11 +63,15 @@ public class ASLService {
     ASLService(
             ASLRepository aslRepository,
             ASLMapper aslMapper,
+            CityRepository cityRepository,
+            RegionRepository regionRepository,
             RestClient restClient,
             String ticketBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
+        this.cityRepository = cityRepository;
+        this.regionRepository = regionRepository;
         this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
         this.restClient = restClient;
     }
@@ -82,24 +96,75 @@ public class ASLService {
         List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
         Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
                 .collect(Collectors.toMap(ASLEntity::getId, entity -> entity));
+        Map<Long, City> cityMap = loadCitiesById(sourceAsls);
+        Map<String, Region> regionMap = loadRegionsByCode(sourceAsls);
 
         return sourceAsls.stream()
-                .map(source -> {
-                    ASLEntity localEntity = localAslMap.get(source.getId());
-                        return ASLOverviewDto.builder()
-                            .id(source.getId())
-                            .codiceAzienda(source.getCodiceAzienda())
-                            .denominazioneAzienda(source.getDenominazioneAzienda())
-                            .codiceRegione(source.getCodiceRegione())
-                            .indirizzo(source.getIndirizzo())
-                            .email(source.getEmail())
-                            .telefono(source.getTelefono())
-                            .imported(localEntity != null)
-                            .note(localEntity != null ? localEntity.getNote() : null)
-                            .build();
-                })
+            .map(source -> toOverviewDto(source, localAslMap.get(source.getId()), cityMap.get(source.getCityId()), regionMap))
                 .toList();
     }
+
+        /**
+         * Arricchisce l'overview ASL con anno e anagrafiche geografiche derivate dal comune sorgente.
+         */
+        private ASLOverviewDto toOverviewDto(ASLDto source, ASLEntity localEntity, City city, Map<String, Region> regionMap) {
+        var province = city != null ? city.getProvince() : null;
+        var cityRegion = province != null ? province.getRegion() : null;
+        String normalizedRegionCode = normalizeRegionCode(source.getCodiceRegione());
+        Region regionFromCode = normalizedRegionCode == null ? null : regionMap.get(normalizedRegionCode);
+        boolean cityRegionMatchesSource = cityRegion != null
+                && normalizedRegionCode != null
+                && normalizedRegionCode.equals(normalizeRegionCode(cityRegion.getRegionCode()));
+        var resolvedProvince = cityRegionMatchesSource ? province : null;
+        var resolvedRegion = regionFromCode != null ? regionFromCode : (cityRegionMatchesSource ? cityRegion : null);
+        return ASLOverviewDto.builder()
+            .id(source.getId())
+            .anno(source.getAnno())
+            .codiceAzienda(source.getCodiceAzienda())
+            .denominazioneAzienda(source.getDenominazioneAzienda())
+            .codiceRegione(source.getCodiceRegione())
+            .provinciaId(resolvedProvince != null ? resolvedProvince.getId() : null)
+            .provinciaDescrizione(resolvedProvince != null ? resolvedProvince.getName() : null)
+            .regioneDescrizione(resolvedRegion != null ? resolvedRegion.getName() : null)
+            .indirizzo(source.getIndirizzo())
+            .email(source.getEmail())
+            .telefono(source.getTelefono())
+            .imported(localEntity != null)
+            .note(localEntity != null ? localEntity.getNote() : null)
+            .build();
+        }
+
+        private Map<Long, City> loadCitiesById(List<ASLDto> sourceAsls) {
+        List<Long> cityIds = sourceAsls.stream()
+            .map(ASLDto::getCityId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        return cityRepository.findAllById(cityIds).stream()
+            .collect(Collectors.toMap(City::getId, city -> city));
+        }
+
+        private Map<String, Region> loadRegionsByCode(List<ASLDto> sourceAsls) {
+        List<String> regionCodes = sourceAsls.stream()
+            .map(ASLDto::getCodiceRegione)
+            .map(this::normalizeRegionCode)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+        return regionRepository.findByRegionCodeIn(regionCodes).stream()
+            .collect(Collectors.toMap(region -> normalizeRegionCode(region.getRegionCode()), region -> region));
+        }
+
+        private String normalizeRegionCode(String regionCode) {
+        if (regionCode == null) {
+            return null;
+        }
+        String trimmed = regionCode.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.length() == 1 ? "0" + trimmed : trimmed;
+        }
 
     @Transactional
     public ASLDto update(Long id, ASLDto dto) {

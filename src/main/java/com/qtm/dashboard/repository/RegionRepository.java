@@ -18,4 +18,6 @@ public interface RegionRepository extends JpaRepository<Region, Long> {
 	List<Region> findByCountryId(Long countryId);
 
     List<Region> findAllByOrderByName();
+
+	List<Region> findByRegionCodeIn(Collection<String> regionCodes);
 }

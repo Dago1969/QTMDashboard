@@ -37,6 +37,14 @@
 // DEV: frontend locale collegato ai backend di sviluppo.
 // La rotta specifica /api/tenants deve precedere /api e replica il routing Traefik del qtm-env.
 module.exports = {
+  '/api/ticket': {
+    target: 'http://localhost:8084',
+    secure: false,
+    changeOrigin: true,
+    logLevel: 'debug',
+    proxyTimeout: 300000,
+    timeout: 300000
+  },
   '/api/tenants': {
     target: 'http://localhost:8087',
     secure: false,

@@ -14,9 +14,13 @@ import lombok.NoArgsConstructor;
 @Builder(toBuilder = true)
 public class ASLOverviewDto {
     private Long id;
+    private Integer anno;
     private String codiceAzienda;
     private String denominazioneAzienda;
     private String codiceRegione;
+    private Long provinciaId;
+    private String provinciaDescrizione;
+    private String regioneDescrizione;
     private String indirizzo;
     private String email;
     private String telefono;
