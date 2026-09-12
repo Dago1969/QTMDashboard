@@ -354,7 +354,8 @@ export class HospitalManagementComponent implements OnInit {
   }
 
   importRow(hospital: HospitalRecord): void {
-    this.http.post<HospitalRecord[]>(`${environment.apiBaseUrl}/hospital/import`, { sourceIds: [hospital.id] }).subscribe({
+    const dashboardBase = (environment as any).dashboardApiBaseUrl || environment.apiBaseUrl;
+    this.http.post<HospitalRecord[]>(`${dashboardBase}/hospital/import`, { sourceIds: [hospital.id] }).subscribe({
       next: () => {
         this.showMessage('hospital.messages.associateSuccess', 'success');
         this.loadOverview();
@@ -366,7 +367,8 @@ export class HospitalManagementComponent implements OnInit {
   }
 
   disassociateRow(hospital: HospitalRecord): void {
-    this.http.delete<void>(`${environment.apiBaseUrl}/hospital/${hospital.id}`).subscribe({
+    const dashboardBase = (environment as any).dashboardApiBaseUrl || environment.apiBaseUrl;
+    this.http.delete<void>(`${dashboardBase}/hospital/${hospital.id}`).subscribe({
       next: () => {
         this.showMessage('hospital.messages.disassociateSuccess', 'success');
         this.loadOverview();
