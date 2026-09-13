@@ -1,3 +1,7 @@
+# Application identity populated at build time by Maven resource filtering
+application:
+  title: ${project.name}
+  version: ${project.version}
 server:
   port: ${SERVER_PORT:8086}
 

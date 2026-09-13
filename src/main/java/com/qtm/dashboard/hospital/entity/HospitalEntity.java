@@ -26,4 +26,22 @@ public class HospitalEntity {
 
     @Column(name = "note", length = 1000)
     private String note;
+
+    @Column(name = "codice_regione", length = 50)
+    private String codiceRegione;
+
+    @Column(name = "codice_asl", length = 50)
+    private String codiceAsl;
+
+    @Column(name = "struttura", length = 255)
+    private String struttura;
+
+    @Column(name = "referents_json", length = 8000)
+    private String referentsJson;
+
+    @Column(name = "codice_struttura", length = 100)
+    private String codiceStruttura;
+
+    @Column(name = "asl_id")
+    private Long aslId;
 }

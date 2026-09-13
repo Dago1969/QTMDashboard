@@ -15,6 +15,7 @@ import { AslImportComponent } from './features/asl/asl-import.component';
 import { HospitalImportComponent } from './features/hospitals/hospital-import.component';
 import { HospitalManagementComponent } from './features/hospitals/hospital-management.component';
 import { StructureDepartmentsManagementComponent } from './features/structure-departments/structure-departments-management.component';
+import { TicketsManagementComponent } from './features/tickets/tickets-management.component';
 
 /**
  * Definizione rotte applicative minime: login pubblico e dashboard protetta.
@@ -42,8 +43,9 @@ export const appRoutes: Routes = [
       { path: 'asl', component: AslManagementComponent, canActivate: [authGuard] },
       { path: 'asl/import', component: AslImportComponent, canActivate: [authGuard] },
       { path: 'hospitals', component: HospitalManagementComponent, canActivate: [authGuard] },
-      { path: 'hospitals/import', component: HospitalImportComponent, canActivate: [authGuard] }
-      ,{ path: 'structure-departments', component: StructureDepartmentsManagementComponent, canActivate: [authGuard] }
+      { path: 'hospitals/import', component: HospitalImportComponent, canActivate: [authGuard] },
+      { path: 'structure-departments', component: StructureDepartmentsManagementComponent, canActivate: [authGuard] },
+      { path: 'tickets', component: TicketsManagementComponent, canActivate: [authGuard] }
     ]
   },
   { path: 'patients/search', pathMatch: 'full', redirectTo: 'dashboard/patients/search' },

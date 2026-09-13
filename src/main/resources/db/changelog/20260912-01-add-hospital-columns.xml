@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260912-01-add-hospital-columns" author="copilot">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="hospital"/>
+        </preConditions>
+
+        <addColumn tableName="hospital">
+            <column name="codice_regione" type="VARCHAR(50)"/>
+            <column name="codice_asl" type="VARCHAR(50)"/>
+            <column name="codice_struttura" type="VARCHAR(100)"/>
+            <column name="struttura" type="VARCHAR(255)"/>
+            <column name="asl_id" type="BIGINT"/>
+            <column name="referents_json" type="VARCHAR(8000)"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="hospital" columnName="codice_regione"/>
+            <dropColumn tableName="hospital" columnName="codice_asl"/>
+            <dropColumn tableName="hospital" columnName="codice_struttura"/>
+            <dropColumn tableName="hospital" columnName="struttura"/>
+            <dropColumn tableName="hospital" columnName="asl_id"/>
+            <dropColumn tableName="hospital" columnName="referents_json"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

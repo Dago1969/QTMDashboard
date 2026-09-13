@@ -1,0 +1,14 @@
+   ___ _____ __  __ ____            _     ____                      _ 
+  / _ \_   _|  \/  |  _ \  __ _ ___| |__ | __ )  ___   __ _ _ __ __| |
+ | | | || | | |\/| | | | |/ _` / __| '_ \|  _ \ / _ \ / _` | '__/ _` |
+ | |_| || | | |  | | |_| | (_| \__ \ | | | |_) | (_) | (_| | | | (_| |
+  \__\_\|_| |_|  |_|____/ \__,_|___/_| |_|____/ \___/ \__,_|_|  \__,_|
+                                                                      
+${project.name} ${project.version}
+Powered by Spring Boot ${spring-boot.version}
+
+${AnsiColor.BRIGHT_RED}
+ :: Spring Boot ::        (v${spring-boot.version})
+ :: Application Name :: (v${project.name}) 				 
+ :: Application Version :: (v${project.version})
+${AnsiColor.DEFAULT}

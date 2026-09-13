@@ -51,6 +51,9 @@
           <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/structure-departments" routerLinkActive="active" class="dashboard-nav-group-link">
             {{ t('dashboard.menu.structureDepartments') }}
           </a>
+          <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/tickets" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('dashboard.menu.tickets') }}
+          </a>
         </div>
       </div>
     </nav>

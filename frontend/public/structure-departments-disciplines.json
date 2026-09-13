@@ -1,0 +1,262 @@
+[
+  {
+    "codice": "01",
+    "disciplina": "ALLERGOLOGIA"
+  },
+  {
+    "codice": "05",
+    "disciplina": "ANGIOLOGIA"
+  },
+  {
+    "codice": "06",
+    "disciplina": "CARDIOCHIRURGIA PEDIATRICA"
+  },
+  {
+    "codice": "07",
+    "disciplina": "CARDIOCHIRURGIA"
+  },
+  {
+    "codice": "08",
+    "disciplina": "CARDIOLOGIA"
+  },
+  {
+    "codice": "09",
+    "disciplina": "CHIRURGIA GENERALE"
+  },
+  {
+    "codice": "10",
+    "disciplina": "CHIRURGIA MAXILLO FACCIALE"
+  },
+  {
+    "codice": "11",
+    "disciplina": "CHIRURGIA PEDIATRICA"
+  },
+  {
+    "codice": "12",
+    "disciplina": "CHIRURGIA PLASTICA"
+  },
+  {
+    "codice": "13",
+    "disciplina": "CHIRURGIA TORACICA"
+  },
+  {
+    "codice": "14",
+    "disciplina": "CHIRURGIA VASCOLARE"
+  },
+  {
+    "codice": "18",
+    "disciplina": "EMATOLOGIA"
+  },
+  {
+    "codice": "19",
+    "disciplina": "MALATTIE ENDOCRINE, RICAMBIO E N"
+  },
+  {
+    "codice": "20",
+    "disciplina": "IMMUNOLOGIA"
+  },
+  {
+    "codice": "21",
+    "disciplina": "GERIATRIA"
+  },
+  {
+    "codice": "24",
+    "disciplina": "MALATTIE INFETTIVE E TROPICALI"
+  },
+  {
+    "codice": "25",
+    "disciplina": "MEDICINA DEL LAVORO"
+  },
+  {
+    "codice": "26",
+    "disciplina": "MEDICINA GENERALE"
+  },
+  {
+    "codice": "28",
+    "disciplina": "UNITA` SPINALE"
+  },
+  {
+    "codice": "29",
+    "disciplina": "NEFROLOGIA"
+  },
+  {
+    "codice": "30",
+    "disciplina": "NEUROCHIRURGIA"
+  },
+  {
+    "codice": "31",
+    "disciplina": "NIDO"
+  },
+  {
+    "codice": "32",
+    "disciplina": "NEUROLOGIA"
+  },
+  {
+    "codice": "33",
+    "disciplina": "NEUROPSICHIATRIA INFANTILE"
+  },
+  {
+    "codice": "34",
+    "disciplina": "OCULISTICA"
+  },
+  {
+    "codice": "35",
+    "disciplina": "ODONTOIATRIA E STOMATOLOGIA"
+  },
+  {
+    "codice": "36",
+    "disciplina": "ORTOPEDIA E TRAUMATOLOGIA"
+  },
+  {
+    "codice": "37",
+    "disciplina": "OSTETRICIA E GINECOLOGIA"
+  },
+  {
+    "codice": "38",
+    "disciplina": "OTORINOLARINGOIATRIA"
+  },
+  {
+    "codice": "39",
+    "disciplina": "PEDIATRIA"
+  },
+  {
+    "codice": "40",
+    "disciplina": "PSICHIATRIA"
+  },
+  {
+    "codice": "43",
+    "disciplina": "UROLOGIA"
+  },
+  {
+    "codice": "46",
+    "disciplina": "GRANDI USTIONI PEDIATRICHE"
+  },
+  {
+    "codice": "47",
+    "disciplina": "GRANDI USTIONI"
+  },
+  {
+    "codice": "48",
+    "disciplina": "NEFROLOGIA (ABILITAZ. AL TRAPIAN"
+  },
+  {
+    "codice": "49",
+    "disciplina": "TERAPIA INTENSIVA"
+  },
+  {
+    "codice": "50",
+    "disciplina": "UNITA` CORONARICA"
+  },
+  {
+    "codice": "51",
+    "disciplina": "ASTANTERIA"
+  },
+  {
+    "codice": "52",
+    "disciplina": "DERMATOLOGIA"
+  },
+  {
+    "codice": "54",
+    "disciplina": "EMODIALISI"
+  },
+  {
+    "codice": "55",
+    "disciplina": "FARMACOLOGIA CLINICA"
+  },
+  {
+    "codice": "56",
+    "disciplina": "RECUPERO E RIABILITAZIONE FUNZIO"
+  },
+  {
+    "codice": "57",
+    "disciplina": "FISIOPATOLOGIA DELLA RIPRODUZION"
+  },
+  {
+    "codice": "58",
+    "disciplina": "GASTROENTEROLOGIA"
+  },
+  {
+    "codice": "60",
+    "disciplina": "LUNGODEGENTI"
+  },
+  {
+    "codice": "61",
+    "disciplina": "MEDICINA NUCLEARE"
+  },
+  {
+    "codice": "62",
+    "disciplina": "NEONATOLOGIA"
+  },
+  {
+    "codice": "64",
+    "disciplina": "ONCOLOGIA"
+  },
+  {
+    "codice": "65",
+    "disciplina": "ONCOEMATOLOGIA PEDIATRICA"
+  },
+  {
+    "codice": "66",
+    "disciplina": "ONCOEMATOLOGIA"
+  },
+  {
+    "codice": "67",
+    "disciplina": "PENSIONANTI"
+  },
+  {
+    "codice": "68",
+    "disciplina": "PNEUMOLOGIA"
+  },
+  {
+    "codice": "69",
+    "disciplina": "RADIOLOGIA"
+  },
+  {
+    "codice": "70",
+    "disciplina": "RADIOTERAPIA"
+  },
+  {
+    "codice": "71",
+    "disciplina": "REUMATOLOGIA"
+  },
+  {
+    "codice": "73",
+    "disciplina": "TERAPIA INTENSIVA NEONATALE"
+  },
+  {
+    "codice": "74",
+    "disciplina": "RADIOTERAPIA ONCOLOGICA"
+  },
+  {
+    "codice": "75",
+    "disciplina": "NEURO-RIABILITAZIONE"
+  },
+  {
+    "codice": "76",
+    "disciplina": "NEUROCHIRURGIA PEDIATRICA"
+  },
+  {
+    "codice": "77",
+    "disciplina": "NEFROLOGIA PEDIATRICA"
+  },
+  {
+    "codice": "78",
+    "disciplina": "UROLOGIA PEDIATRICA"
+  },
+  {
+    "codice": "94",
+    "disciplina": "TERAPIA SEMI-INTENSIVA"
+  },
+  {
+    "codice": "96",
+    "disciplina": "TERAPIA DEL DOLORE"
+  },
+  {
+    "codice": "97",
+    "disciplina": "DETENUTI"
+  },
+  {
+    "codice": "98",
+    "disciplina": "DAY SURGERY"
+  }
+]

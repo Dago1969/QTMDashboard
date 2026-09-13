@@ -35,6 +35,10 @@
 
     <include file="20260701-03-ensure-asl-columns.xml" relativeToChangelogFile="true"/>
 
+    <include file="20260912-01-add-hospital-columns.xml" relativeToChangelogFile="true"/>
+
+    <include file="20260912-02-create-structure-department-table.xml" relativeToChangelogFile="true"/>
+
     <include file="20260909-01-add-caregiver-relationship.yaml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

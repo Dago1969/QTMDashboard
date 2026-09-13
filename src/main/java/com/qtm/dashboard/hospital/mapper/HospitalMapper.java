@@ -13,6 +13,11 @@ public class HospitalMapper {
         }
         return HospitalDto.builder()
                 .id(entity.getId())
+                .codiceRegione(entity.getCodiceRegione())
+                .codiceAsl(entity.getCodiceAsl())
+                .struttura(entity.getStruttura())
+                .codiceStruttura(entity.getCodiceStruttura())
+                .aslId(entity.getAslId())
                 .build();
     }
 
@@ -22,6 +27,11 @@ public class HospitalMapper {
         }
         return HospitalEntity.builder()
                 .id(dto.getId())
+                .codiceRegione(dto.getCodiceRegione())
+                .codiceAsl(dto.getCodiceAsl())
+                .struttura(dto.getStruttura())
+                .codiceStruttura(dto.getCodiceStruttura())
+                .referentsJson(null)
                 .build();
     }
 }
