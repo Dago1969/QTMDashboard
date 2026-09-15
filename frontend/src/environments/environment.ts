@@ -11,8 +11,10 @@ export const environment = {
   dashboardApiBaseUrl: (typeof window !== 'undefined' && (window as any).NG_APP_API_BASE_URL)
     ? (window as any).NG_APP_API_BASE_URL
     : 'http://XXXXlocalhost:8086/api',
-  // FIXME Francesco: instradare QTMTicket con una base dedicata per non inviare /api/ticket al backend dashboard locale.
-  ticketApiBaseUrl: '/api/ticket',
+  // Il frontend usa un base path pulito; proxy locale/nginx lo inoltrano al context-path reale di QTMTicket.
+  ticketApiBaseUrl: (typeof window !== 'undefined' && (window as any).NG_APP_TICKET_API_BASE_URL)
+    ? (window as any).NG_APP_TICKET_API_BASE_URL
+    : '/api/ticket',
   // FIXME Francesco: rotta relativa condivisa tra proxy locale e routing Traefik del qtm-env.
   tenantsApiBaseUrl: '/api/tenants'
 };

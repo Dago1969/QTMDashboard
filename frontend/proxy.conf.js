@@ -41,6 +41,9 @@ module.exports = {
     target: 'http://localhost:8084',
     secure: false,
     changeOrigin: true,
+    pathRewrite: {
+      '^/api/ticket': '/api/ticket/api'
+    },
     logLevel: 'debug',
     proxyTimeout: 300000,
     timeout: 300000

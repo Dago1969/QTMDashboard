@@ -361,7 +361,7 @@ export class AslManagementComponent implements OnInit {
 
   // region/province helpers
   private loadRegions(): void {
-    this.http.get<RegionOption[]>(`${environment.apiBaseUrl}/regions`).subscribe({
+    this.http.get<RegionOption[]>(`${environment.ticketApiBaseUrl}/regions`).subscribe({
       next: (regions) => {
         this.regions = (regions ?? []).map((region) => ({
           ...region,
@@ -375,7 +375,7 @@ export class AslManagementComponent implements OnInit {
   }
 
   private loadProvinces(regionId: number): void {
-    this.http.get<Array<{ id: number; name: string }>>(`${environment.apiBaseUrl}/provinces/by-region/${regionId}`).subscribe({
+    this.http.get<Array<{ id: number; name: string }>>(`${environment.ticketApiBaseUrl}/provinces/by-region/${regionId}`).subscribe({
       next: (provinces) => (this.provinces = provinces),
       error: () => {
         // ignore silently

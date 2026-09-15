@@ -270,7 +270,7 @@ export class StructureDepartmentsManagementComponent {
   private loadFilterOptions(): void {
     // Load regions from Ticket service and other filter options (asls/hospitals) from dashboard backend
     forkJoin({
-      regions: this.http.get<Array<{ id: number; name: string; regionCode?: string }>>(`${environment.apiBaseUrl}/regions`).pipe(catchError(() => of([] as Array<{ id: number; name: string; regionCode?: string }>))),
+      regions: this.http.get<Array<{ id: number; name: string; regionCode?: string }>>(`${environment.ticketApiBaseUrl}/regions`).pipe(catchError(() => of([] as Array<{ id: number; name: string; regionCode?: string }>))),
       others: this.http.get<StructureDepartmentFilterOptions>(`${environment.apiBaseUrl}/structure-departments/filter-options`).pipe(catchError(() => of({ regions: [], asls: [], hospitals: [] } as StructureDepartmentFilterOptions)))
     }).subscribe({
       next: ({ regions, others }) => {

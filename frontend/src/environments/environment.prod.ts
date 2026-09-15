@@ -9,7 +9,9 @@ export const environment = {
   dashboardApiBaseUrl: (typeof window !== 'undefined' && (window as any).NG_APP_API_BASE_URL)
     ? (window as any).NG_APP_API_BASE_URL
     : '/api',
-  // URL assoluto fissato in produzione per instradare direttamente QTMTicket.
-  ticketApiBaseUrl: 'https://ticket.qtmdev.quicare.com/api/ticket',
+  // Priorita: runtime env `NG_APP_TICKET_API_BASE_URL` -> fallback relativo per produzione.
+  ticketApiBaseUrl: (typeof window !== 'undefined' && (window as any).NG_APP_TICKET_API_BASE_URL)
+    ? (window as any).NG_APP_TICKET_API_BASE_URL
+    : '/api/ticket',
   tenantsApiBaseUrl: '/api/tenants'
 };
