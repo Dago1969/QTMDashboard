@@ -11,7 +11,7 @@ import com.qtm.dashboard.asl.repository.ASLRepository;
 import com.qtm.dashboard.domain.City;
 import com.qtm.dashboard.domain.Region;
 import com.qtm.dashboard.repository.CityRepository;
-import com.qtm.dashboard.repository.RegionRepository;
+import com.qtm.dashboard.service.RegionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +37,8 @@ public class ASLService {
     private final ASLRepository aslRepository;
     private final ASLMapper aslMapper;
     private final CityRepository cityRepository;
-    private final RegionRepository regionRepository;
+    private final RegionService regionService;
+    private final com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService;
     private final RestClient restClient;
     private final String ticketBaseUrl;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -47,13 +48,15 @@ public class ASLService {
             ASLRepository aslRepository,
             ASLMapper aslMapper,
             CityRepository cityRepository,
-            RegionRepository regionRepository,
-            @Value("${app.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
+                RegionService regionService,
+                com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService,
+                @Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
         this.cityRepository = cityRepository;
-        this.regionRepository = regionRepository;
+        this.regionService = regionService;
+        this.ticketGeographyService = ticketGeographyService;
         this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
         // RestClient usato per chiamare le API QTMTicket; la base URL è configurabile in application.properties
         this.restClient = RestClient.builder().baseUrl(this.ticketBaseUrl).build();
@@ -64,29 +67,30 @@ public class ASLService {
             ASLRepository aslRepository,
             ASLMapper aslMapper,
             CityRepository cityRepository,
-            RegionRepository regionRepository,
+            RegionService regionService,
             RestClient restClient,
             String ticketBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
         this.cityRepository = cityRepository;
-        this.regionRepository = regionRepository;
+        this.regionService = regionService;
         this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
         this.restClient = restClient;
+        this.ticketGeographyService = null;
     }
 
     @Transactional(readOnly = true)
     public List<ASLDto> findAll() {
         return aslRepository.findAll().stream()
-                .map(aslMapper::entityToDto)
+                .map(entity -> aslMapper.entityToDto(entity))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ASLDto findById(Long id) {
         return aslRepository.findById(id)
-                .map(aslMapper::entityToDto)
+                .map(entity -> aslMapper.entityToDto(entity))
                 .orElse(null);
     }
 
@@ -108,23 +112,49 @@ public class ASLService {
          * Arricchisce l'overview ASL con anno e anagrafiche geografiche derivate dal comune sorgente.
          */
         private ASLOverviewDto toOverviewDto(ASLDto source, ASLEntity localEntity, City city, Map<String, Region> regionMap) {
+        // try resolving geography first via QTMTicket (prefer remote authoritative data)
+        com.qtm.dashboard.geography.TicketGeographyService.TicketProvince ticketProvince = null;
+        com.qtm.dashboard.geography.TicketGeographyService.TicketRegion ticketRegion = null;
+        if (ticketGeographyService != null && source.getCityId() != null) {
+            ticketProvince = ticketGeographyService.findCityById(source.getCityId())
+                .map(com.qtm.dashboard.geography.TicketGeographyService.TicketCity::getProvince)
+                .orElse(null);
+        }
+        String normalizedRegionCode = normalizeRegionCode(source.getCodiceRegione());
+        if (ticketGeographyService != null && normalizedRegionCode != null) {
+            ticketRegion = ticketGeographyService.findRegionByCode(normalizedRegionCode).orElse(null);
+        }
+
         var province = city != null ? city.getProvince() : null;
         var cityRegion = province != null ? province.getRegion() : null;
-        String normalizedRegionCode = normalizeRegionCode(source.getCodiceRegione());
         Region regionFromCode = normalizedRegionCode == null ? null : regionMap.get(normalizedRegionCode);
+
         boolean cityRegionMatchesSource = cityRegion != null
-                && normalizedRegionCode != null
-                && normalizedRegionCode.equals(normalizeRegionCode(cityRegion.getRegionCode()));
-        var resolvedProvince = cityRegionMatchesSource ? province : null;
-        var resolvedRegion = regionFromCode != null ? regionFromCode : (cityRegionMatchesSource ? cityRegion : null);
+            && normalizedRegionCode != null
+            && normalizedRegionCode.equals(normalizeRegionCode(cityRegion.getRegionCode()));
+
+        // resolvedProvince: prefer ticketProvince if available
+        Long resolvedProvinceId = null;
+        String resolvedProvinceName = null;
+        if (ticketProvince != null) {
+            resolvedProvinceId = ticketProvince.getId();
+            resolvedProvinceName = ticketProvince.getName();
+        } else if (cityRegionMatchesSource && province != null) {
+            resolvedProvinceId = province.getId();
+            resolvedProvinceName = province.getName();
+        }
+
+        var resolvedRegion = (ticketRegion != null) ?
+                Region.builder().id(ticketRegion.getId()).name(ticketRegion.getName()).regionCode(ticketRegion.getRegionCode()).build()
+                : (regionFromCode != null ? regionFromCode : (cityRegionMatchesSource ? cityRegion : null));
         return ASLOverviewDto.builder()
             .id(source.getId())
             .anno(source.getAnno())
             .codiceAzienda(source.getCodiceAzienda())
             .denominazioneAzienda(source.getDenominazioneAzienda())
             .codiceRegione(source.getCodiceRegione())
-            .provinciaId(resolvedProvince != null ? resolvedProvince.getId() : null)
-            .provinciaDescrizione(resolvedProvince != null ? resolvedProvince.getName() : null)
+            .provinciaId(resolvedProvinceId)
+            .provinciaDescrizione(resolvedProvinceName)
             .regioneDescrizione(resolvedRegion != null ? resolvedRegion.getName() : null)
             .indirizzo(source.getIndirizzo())
             .email(source.getEmail())
@@ -151,7 +181,13 @@ public class ASLService {
             .filter(Objects::nonNull)
             .distinct()
             .toList();
-        return regionRepository.findByRegionCodeIn(regionCodes).stream()
+        // try to resolve regions via RegionService (which reads from QTMTicket)
+        List<Region> regions = regionService.findAll().stream()
+            .map(dto -> Region.builder().id(dto.getId()).name(dto.getName()).regionCode(dto.getRegionCode()).build())
+            .filter(r -> r.getRegionCode() != null)
+            .toList();
+        return regions.stream()
+            .filter(r -> regionCodes.contains(normalizeRegionCode(r.getRegionCode())))
             .collect(Collectors.toMap(region -> normalizeRegionCode(region.getRegionCode()), region -> region));
         }
 
@@ -272,7 +308,7 @@ public class ASLService {
         }
         if (exception instanceof ResourceAccessException) {
             String detail = String.format(
-                    "QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che app.ticket.base-url sia corretto.",
+                    "QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che qtm.ticket.base-url sia corretto.",
                     targetUrl
             );
             return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);

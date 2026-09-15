@@ -9,7 +9,7 @@
     <include file="20260430-10-baseline-schema.xml" relativeToChangelogFile="true"/>
 
     <include file="20260503-01-add-project-json-visit.xml" relativeToChangelogFile="true"/>
-    <include file="20260430-11-seed-geography.xml" relativeToChangelogFile="true"/>
+    <!-- removed: geography seeds (region/province/city) as requested -->
     <include file="20260430-12-seed-roles.xml" relativeToChangelogFile="true"/>
     <include file="20260430-13-seed-mail-templates.xml" relativeToChangelogFile="true"/>
     <include file="20260430-14-seed-medicines.xml" relativeToChangelogFile="true"/>

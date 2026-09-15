@@ -8,7 +8,8 @@ import com.qtm.dashboard.domain.City;
 import com.qtm.dashboard.domain.Province;
 import com.qtm.dashboard.domain.Region;
 import com.qtm.dashboard.repository.CityRepository;
-import com.qtm.dashboard.repository.RegionRepository;
+import com.qtm.dashboard.dto.RegionDto;
+import com.qtm.dashboard.service.RegionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -37,7 +38,7 @@ class ASLServiceTest {
     private CityRepository cityRepository;
 
         @Mock
-        private RegionRepository regionRepository;
+                private RegionService regionService;
 
     @Mock
     private RestClient restClient;
@@ -50,7 +51,7 @@ class ASLServiceTest {
 
     @Test
     void findAllWithImportStatusShouldExposeAnnoProvinceAndRegion() {
-                ASLService aslService = new ASLService(aslRepository, aslMapper, cityRepository, regionRepository, restClient, "http://ticket.test");
+                ASLService aslService = new ASLService(aslRepository, aslMapper, cityRepository, regionService, restClient, "http://ticket.test");
 
         ASLDto source = ASLDto.builder()
                 .id(103L)
@@ -74,7 +75,7 @@ class ASLServiceTest {
 
         when(aslRepository.findAll()).thenReturn(List.of(localEntity));
         when(cityRepository.findAllById(List.of(5394L))).thenReturn(List.of(city));
-        when(regionRepository.findByRegionCodeIn(List.of("13"))).thenReturn(List.of(region));
+        when(regionService.findAll()).thenReturn(List.of(RegionDto.builder().id(13L).regionCode("13").name("Abruzzo").build()));
         doReturn(requestHeadersUriSpec).when(restClient).get();
         doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
         when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
@@ -92,7 +93,7 @@ class ASLServiceTest {
 
         @Test
         void findAllWithImportStatusShouldUseSourceRegionCodeWhenCityRegionIsInconsistent() {
-                ASLService aslService = new ASLService(aslRepository, aslMapper, cityRepository, regionRepository, restClient, "http://ticket.test");
+                ASLService aslService = new ASLService(aslRepository, aslMapper, cityRepository, regionService, restClient, "http://ticket.test");
 
                 ASLDto source = ASLDto.builder()
                                 .id(91L)
@@ -111,7 +112,7 @@ class ASLServiceTest {
 
                 when(aslRepository.findAll()).thenReturn(List.of());
                 when(cityRepository.findAllById(List.of(6068L))).thenReturn(List.of(mismatchedCity));
-                when(regionRepository.findByRegionCodeIn(List.of("12"))).thenReturn(List.of(lazio));
+                when(regionService.findAll()).thenReturn(List.of(RegionDto.builder().id(12L).regionCode("12").name("Lazio").build()));
                 doReturn(requestHeadersUriSpec).when(restClient).get();
                 doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
                 when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
@@ -127,7 +128,7 @@ class ASLServiceTest {
 
     @Test
     void importFromSourceShouldPersistEntitiesUsingProvidedIds() {
-                ASLService aslService = new ASLService(aslRepository, aslMapper, cityRepository, regionRepository, restClient, "http://ticket.test");
+                ASLService aslService = new ASLService(aslRepository, aslMapper, cityRepository, regionService, restClient, "http://ticket.test");
 
         ASLDto dto = ASLDto.builder()
                 .id(321L)

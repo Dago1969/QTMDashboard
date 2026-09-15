@@ -27,6 +27,13 @@ interface AslRecord {
   regioneDescrizione?: string;
 }
 
+interface RegionOption {
+  id: number;
+  name: string;
+  regionCode?: string;
+  code?: string;
+}
+
 @Component({
   selector: 'app-asl-management',
   standalone: true,
@@ -189,8 +196,8 @@ export class AslManagementComponent implements OnInit {
     provinceId: '' as string
   };
   allAslRecords: AslRecord[] = [];
-  // regions come dall'API con shape { id, regionCode, name, ... }
-  regions: Array<{ id: number; name: string; regionCode?: string }> = [];
+  // regions possono arrivare con regionCode o code a seconda della sorgente.
+  regions: RegionOption[] = [];
   provinces: Array<{ id: number; name: string }> = [];
   pageSize = 10;
   currentPage = 1;
@@ -260,11 +267,6 @@ export class AslManagementComponent implements OnInit {
       }
       return true;
     });
-  }
-
-  private getRegionNameById(regionId: string): string | undefined {
-    const r = this.regions.find((x) => String(x.id) === String(regionId));
-    return r?.name;
   }
 
   padRegionCode(codeOrId: string | number): string {
@@ -359,8 +361,13 @@ export class AslManagementComponent implements OnInit {
 
   // region/province helpers
   private loadRegions(): void {
-    this.http.get<Array<{ id: number; name: string; regionCode?: string }>>(`${environment.apiBaseUrl}/regions`).subscribe({
-      next: (regions) => (this.regions = regions),
+    this.http.get<RegionOption[]>(`${environment.apiBaseUrl}/regions`).subscribe({
+      next: (regions) => {
+        this.regions = (regions ?? []).map((region) => ({
+          ...region,
+          regionCode: this.resolveRegionCode(region)
+        }));
+      },
       error: () => {
         // ignore silently for filters
       }
@@ -382,10 +389,19 @@ export class AslManagementComponent implements OnInit {
     this.currentPage = 1;
     // set regionCode for filtering using region.regionCode returned by API
     const sel = this.regions.find((r) => String(r.id) === String(regionId));
-    this.filters.regionCode = sel?.regionCode ? this.padRegionCode(sel.regionCode) : '';
+    const resolvedRegionCode = sel ? this.resolveRegionCode(sel) : '';
+    this.filters.regionCode = resolvedRegionCode ? this.padRegionCode(resolvedRegionCode) : '';
     if (regionId) {
       this.loadProvinces(Number(regionId));
     }
+  }
+
+  private resolveRegionCode(region: RegionOption): string {
+    const raw = String(region.regionCode ?? region.code ?? '').trim();
+    if (raw) {
+      return this.padRegionCode(raw);
+    }
+    return this.padRegionCode(region.id);
   }
 
   // pagination actions

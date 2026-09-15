@@ -54,7 +54,7 @@ public class StructureDepartmentService {
             ASLRepository aslRepository,
             HospitalRepository hospitalRepository,
             StructureDepartmentRepository structureDepartmentRepository,
-            @Value("${app.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
+                @Value("${app.ticket.base-url:http://localhost:8084/api}") String ticketBaseUrl
     ) {
         this(aslRepository, hospitalRepository, structureDepartmentRepository,
             RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build(),

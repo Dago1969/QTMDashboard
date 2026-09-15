@@ -36,7 +36,7 @@ public class HospitalService {
     public HospitalService(
             HospitalRepository hospitalRepository,
             HospitalMapper hospitalMapper,
-            @Value("${app.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
+                @Value("${app.ticket.base-url:http://localhost:8084/api}") String ticketBaseUrl
     ) {
         this(hospitalRepository, hospitalMapper, RestClient.builder().baseUrl(ticketBaseUrl).build(), ticketBaseUrl);
     }

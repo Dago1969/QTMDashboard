@@ -268,11 +268,21 @@ export class StructureDepartmentsManagementComponent {
   }
 
   private loadFilterOptions(): void {
-    this.http.get<StructureDepartmentFilterOptions>(`${environment.apiBaseUrl}/structure-departments/filter-options`).subscribe({
-      next: (options) => {
-        this.allRegionOptions = this.uniqueOptions(options.regions || []);
-        this.allAslOptions = this.uniqueOptions(options.asls || []);
-        this.allHospitalOptions = this.uniqueOptions(options.hospitals || []);
+    // Load regions from Ticket service and other filter options (asls/hospitals) from dashboard backend
+    forkJoin({
+      regions: this.http.get<Array<{ id: number; name: string; regionCode?: string }>>(`${environment.apiBaseUrl}/regions`).pipe(catchError(() => of([] as Array<{ id: number; name: string; regionCode?: string }>))),
+      others: this.http.get<StructureDepartmentFilterOptions>(`${environment.apiBaseUrl}/structure-departments/filter-options`).pipe(catchError(() => of({ regions: [], asls: [], hospitals: [] } as StructureDepartmentFilterOptions)))
+    }).subscribe({
+      next: ({ regions, others }) => {
+        // map ticket regions to FilterOption shape (use regionCode as code when available)
+        const mappedRegions: FilterOption[] = (regions || []).map((r) => ({
+          code: r.regionCode ? String(r.regionCode).padStart(2, '0') : String(r.id),
+          label: r.name,
+          regionCode: r.regionCode ? String(r.regionCode).padStart(2, '0') : undefined
+        }));
+        this.allRegionOptions = this.uniqueOptions(mappedRegions.concat(others.regions || []));
+        this.allAslOptions = this.uniqueOptions(others.asls || []);
+        this.allHospitalOptions = this.uniqueOptions(others.hospitals || []);
         this.refreshAvailableOptions();
         this.loadOverview();
       },
