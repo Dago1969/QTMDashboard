@@ -8,10 +8,6 @@ import com.qtm.dashboard.asl.dto.ASLOverviewDto;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.mapper.ASLMapper;
 import com.qtm.dashboard.asl.repository.ASLRepository;
-import com.qtm.dashboard.domain.City;
-import com.qtm.dashboard.domain.Region;
-import com.qtm.dashboard.repository.CityRepository;
-import com.qtm.dashboard.service.RegionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,8 +32,6 @@ public class ASLService {
 
     private final ASLRepository aslRepository;
     private final ASLMapper aslMapper;
-    private final CityRepository cityRepository;
-    private final RegionService regionService;
     private final com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService;
     private final RestClient restClient;
     private final String ticketBaseUrl;
@@ -47,15 +41,11 @@ public class ASLService {
     public ASLService(
             ASLRepository aslRepository,
             ASLMapper aslMapper,
-            CityRepository cityRepository,
-                RegionService regionService,
                 com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService,
                 @Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
-        this.cityRepository = cityRepository;
-        this.regionService = regionService;
         this.ticketGeographyService = ticketGeographyService;
         this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
         // RestClient usato per chiamare le API QTMTicket; la base URL è configurabile in application.properties
@@ -66,19 +56,30 @@ public class ASLService {
     ASLService(
             ASLRepository aslRepository,
             ASLMapper aslMapper,
-            CityRepository cityRepository,
-            RegionService regionService,
             RestClient restClient,
             String ticketBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
-        this.cityRepository = cityRepository;
-        this.regionService = regionService;
         this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
         this.restClient = restClient;
         this.ticketGeographyService = null;
     }
+
+        // Test-friendly constructor to inject a mocked TicketGeographyService
+        ASLService(
+            ASLRepository aslRepository,
+            ASLMapper aslMapper,
+            com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService,
+            RestClient restClient,
+            String ticketBaseUrl
+        ) {
+        this.aslRepository = aslRepository;
+        this.aslMapper = aslMapper;
+        this.ticketGeographyService = ticketGeographyService;
+        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
+        this.restClient = restClient;
+        }
 
     @Transactional(readOnly = true)
     public List<ASLDto> findAll() {
@@ -100,8 +101,8 @@ public class ASLService {
         List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
         Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
                 .collect(Collectors.toMap(ASLEntity::getId, entity -> entity));
-        Map<Long, City> cityMap = loadCitiesById(sourceAsls);
-        Map<String, Region> regionMap = loadRegionsByCode(sourceAsls);
+        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketCity> cityMap = loadCitiesById(sourceAsls);
+        Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap = loadRegionsByCode(sourceAsls);
 
         return sourceAsls.stream()
             .map(source -> toOverviewDto(source, localAslMap.get(source.getId()), cityMap.get(source.getCityId()), regionMap))
@@ -111,7 +112,7 @@ public class ASLService {
         /**
          * Arricchisce l'overview ASL con anno e anagrafiche geografiche derivate dal comune sorgente.
          */
-        private ASLOverviewDto toOverviewDto(ASLDto source, ASLEntity localEntity, City city, Map<String, Region> regionMap) {
+        private ASLOverviewDto toOverviewDto(ASLDto source, ASLEntity localEntity, com.qtm.dashboard.geography.TicketGeographyService.TicketCity city, Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap) {
         // try resolving geography first via QTMTicket (prefer remote authoritative data)
         com.qtm.dashboard.geography.TicketGeographyService.TicketProvince ticketProvince = null;
         com.qtm.dashboard.geography.TicketGeographyService.TicketRegion ticketRegion = null;
@@ -127,7 +128,7 @@ public class ASLService {
 
         var province = city != null ? city.getProvince() : null;
         var cityRegion = province != null ? province.getRegion() : null;
-        Region regionFromCode = normalizedRegionCode == null ? null : regionMap.get(normalizedRegionCode);
+        com.qtm.dashboard.geography.TicketGeographyService.TicketRegion regionFromCode = normalizedRegionCode == null ? null : regionMap.get(normalizedRegionCode);
 
         boolean cityRegionMatchesSource = cityRegion != null
             && normalizedRegionCode != null
@@ -144,9 +145,7 @@ public class ASLService {
             resolvedProvinceName = province.getName();
         }
 
-        var resolvedRegion = (ticketRegion != null) ?
-                Region.builder().id(ticketRegion.getId()).name(ticketRegion.getName()).regionCode(ticketRegion.getRegionCode()).build()
-                : (regionFromCode != null ? regionFromCode : (cityRegionMatchesSource ? cityRegion : null));
+        var resolvedRegion = (ticketRegion != null) ? ticketRegion : (regionFromCode != null ? regionFromCode : (cityRegionMatchesSource ? cityRegion : null));
         return ASLOverviewDto.builder()
             .id(source.getId())
             .anno(source.getAnno())
@@ -164,30 +163,28 @@ public class ASLService {
             .build();
         }
 
-        private Map<Long, City> loadCitiesById(List<ASLDto> sourceAsls) {
+        private Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketCity> loadCitiesById(List<ASLDto> sourceAsls) {
         List<Long> cityIds = sourceAsls.stream()
             .map(ASLDto::getCityId)
             .filter(Objects::nonNull)
             .distinct()
             .toList();
-        return cityRepository.findAllById(cityIds).stream()
-            .collect(Collectors.toMap(City::getId, city -> city));
+        return cityIds.stream()
+            .map(id -> ticketGeographyService == null ? null : ticketGeographyService.findCityById(id).orElse(null))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toMap(com.qtm.dashboard.geography.TicketGeographyService.TicketCity::getId, city -> city));
         }
 
-        private Map<String, Region> loadRegionsByCode(List<ASLDto> sourceAsls) {
+        private Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> loadRegionsByCode(List<ASLDto> sourceAsls) {
         List<String> regionCodes = sourceAsls.stream()
             .map(ASLDto::getCodiceRegione)
             .map(this::normalizeRegionCode)
             .filter(Objects::nonNull)
             .distinct()
             .toList();
-        // try to resolve regions via RegionService (which reads from QTMTicket)
-        List<Region> regions = regionService.findAll().stream()
-            .map(dto -> Region.builder().id(dto.getId()).name(dto.getName()).regionCode(dto.getRegionCode()).build())
-            .filter(r -> r.getRegionCode() != null)
-            .toList();
-        return regions.stream()
-            .filter(r -> regionCodes.contains(normalizeRegionCode(r.getRegionCode())))
+        return regionCodes.stream()
+            .map(code -> ticketGeographyService == null ? null : ticketGeographyService.findRegionByCode(code).orElse(null))
+            .filter(Objects::nonNull)
             .collect(Collectors.toMap(region -> normalizeRegionCode(region.getRegionCode()), region -> region));
         }
 

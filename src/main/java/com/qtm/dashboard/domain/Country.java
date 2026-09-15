@@ -30,6 +30,6 @@ public class Country {
     @Column(name = "denominazione_cittadinanza", nullable = false, length = 100)
     private String nationalityName;
 
-    @OneToMany(mappedBy = "country", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Region> regions;
+//    @OneToMany(mappedBy = "country", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<Region> regions;
 }

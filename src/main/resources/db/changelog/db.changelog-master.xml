@@ -5,6 +5,9 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
+    <!-- Drop geography tables if present (run once to remove Region/Province/City) -->
+    <include file="20260915-01-drop-geography.xml" relativeToChangelogFile="true"/>
+
     <!-- Baseline pulita del database con schema finale e seed idempotenti. -->
     <include file="20260430-10-baseline-schema.xml" relativeToChangelogFile="true"/>
 
