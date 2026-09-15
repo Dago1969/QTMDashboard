@@ -58,6 +58,9 @@ services:
       - "4200:80"
     depends_on:
       - backend
+    environment:
+      NG_APP_API_BASE_URL: ${NG_APP_API_BASE_URL}
+      NG_APP_TICKET_API_BASE_URL: ${NG_APP_TICKET_API_BASE_URL}
     restart: always
     networks:
       - qtm-network

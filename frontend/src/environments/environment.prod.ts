@@ -9,6 +9,7 @@ export const environment = {
   dashboardApiBaseUrl: (typeof window !== 'undefined' && (window as any).NG_APP_API_BASE_URL)
     ? (window as any).NG_APP_API_BASE_URL
     : '/api',
-  ticketApiBaseUrl: '/api/ticket',
+  // URL assoluto fissato in produzione per instradare direttamente QTMTicket.
+  ticketApiBaseUrl: 'https://ticket.qtmdev.quicare.com/api/ticket',
   tenantsApiBaseUrl: '/api/tenants'
 };

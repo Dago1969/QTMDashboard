@@ -6,6 +6,9 @@ services:
     container_name: qtmdashboard-frontend
     ports:
       - "4200:80"
+    environment:
+      NG_APP_API_BASE_URL: ${NG_APP_API_BASE_URL}
+      NG_APP_TICKET_API_BASE_URL: ${NG_APP_TICKET_API_BASE_URL}
     # Il backend deve essere avviato separatamente
     restart: always
     networks:
