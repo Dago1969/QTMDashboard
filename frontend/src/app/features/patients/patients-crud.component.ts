@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Select2 } from 'ng-select2-component';
 import intlTelInput, { type AllOptions, type Iti } from 'intl-tel-input';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -85,7 +86,7 @@ interface ConsentOtpState {
 @Component({
   selector: 'app-patients-crud',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Select2],
   template: `
     <section class="page-card">
       <header class="page-header">
@@ -121,9 +122,15 @@ interface ConsentOtpState {
 
             <ng-container *ngIf="field.key === 'region'; else normalField">
               <div class="location-row">
-                <div class="location-item"><input [(ngModel)]="model.region" name="region" [readonly]="field.readonly || isViewMode" /></div>
-                <div class="location-item"><input [(ngModel)]="model.province" name="province" [readonly]="isViewMode" /></div>
-                <div class="location-item"><input [(ngModel)]="model.city" name="city" [readonly]="isViewMode" /></div>
+                <div class="location-item">
+                  <ng-select2 class="qtm-select2-field" [(ngModel)]="model.region" name="region" [data]="toSelect2DataFromText(model.region)" [placeholder]="t('patients.field.region')" [displaySearchStatus]="'hidden'" [resettable]="true"></ng-select2>
+                </div>
+                <div class="location-item">
+                  <ng-select2 class="qtm-select2-field" [(ngModel)]="model.province" name="province" [data]="toSelect2DataFromText(model.province)" [placeholder]="t('patients.field.province')" [displaySearchStatus]="'hidden'" [resettable]="true"></ng-select2>
+                </div>
+                <div class="location-item">
+                  <ng-select2 class="qtm-select2-field" [(ngModel)]="model.city" name="city" [data]="toSelect2DataFromText(model.city)" [placeholder]="t('patients.field.city')" [displaySearchStatus]="'hidden'" [resettable]="true"></ng-select2>
+                </div>
               </div>
             </ng-container>
 
@@ -297,6 +304,11 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly router: Router,
     private readonly i18nPropertiesService: I18nPropertiesService
   ) {}
+
+  toSelect2DataFromText(text: string | undefined): Array<{ value: string; label: string; id: string }> {
+    const val = text ?? '';
+    return val ? [{ value: val, label: val, id: val }] : [];
+  }
 
   ngOnInit(): void {
     this.subscriptions.add(

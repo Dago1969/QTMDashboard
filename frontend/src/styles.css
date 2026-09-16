@@ -1,39 +1,222 @@
+@import "@ng-select/ng-select/themes/default.theme.css";
 @import './assets/intl-tel-input/css/intlTelInput.css';
 
 :root {
-  /* Colori principali */
-  --Primary: #0E65FF;
-  --TXT: #454F78;
-  --Color-shadow: #A2E4FF;
-  --Grad-element: #E3F7FF;
-  --label-color: #454F78;
+  /* Colori principali (allineati a Tenants-app) */
+  --Primary: #1870e8; /* colore principale usato in Tenants-app */
+  --TXT: #355277;
+  --Color-shadow: #d3e5f8;
+  --Grad-element: #edf6ff;
+  --label-color: #355277;
   --label-font-family: "Work Sans", Arial, Helvetica, sans-serif;
   --label-font-size: 12px;
   --label-font-weight: 600;
   --label-letter-spacing: -0.05em;
 
-  /* Button Variables */
-  --button-display: flex;
-  --button-height: 36px;
+  /* Button Variables (Tenants-app style) */
+  --button-display: inline-flex;
+  --button-height: 42px;
   --button-min-width: 100px;
-  --button-padding: 8px 16px;
+  --button-padding: 12px 18px;
   --button-justify-content: center;
   --button-align-items: center;
   --button-gap: 10px;
-  --button-border-radius: 18px;
-  --button-background: linear-gradient(0deg, rgba(255, 255, 255, 0.50) 0%, rgba(255, 255, 255, 0.50) 100%), var(--Primary);
+  --button-border-radius: 999px;
+  --button-background: linear-gradient(90deg, #1870e8 0%, #1fc4ff 100%);
 
-  /* Input Variables */
-  --input-display: flex;
-  --input-height: 36px;
-  --input-padding: 6px 16px; /* Bilanciato per centrare il testo */
-  --input-border-radius: 18px;
-  --input-background: linear-gradient(0deg, rgba(251, 251, 251, 0.50) 0%, rgba(251, 251, 251, 0.50) 100%), var(--Grad-element);
+  /* Input Variables (Tenants-app style) */
+  --input-display: block;
+  --input-height: 48px;
+  --input-padding: 12px 16px;
+  --input-border-radius: 16px;
+  --input-background: #edf6ff;
 
   /* Text Variables */
   --text-color: var(--Primary);
   --text-font-family: "Work Sans", Arial, Helvetica, sans-serif;
 }
+
+/* Select2 theme variables borrowed from Tenants-app to keep visual parity */
+:root {
+  --select2-single-height: 50px;
+  --select2-selection-border-radius: 16px;
+  --select2-selection-background: #edf6ff;
+  --select2-selection-border-color: #d3e5f8;
+  --select2-selection-focus-border-color: #1870e8;
+  --select2-selection-text-color: #1a3a5d;
+  --select2-selection-padding: 0 44px 0 16px;
+  --select2-placeholder-color: #6f87a3;
+  --select2-dropdown-border-color: #d3e5f8;
+  --select2-dropdown-background: #ffffff;
+  --select2-option-selected-background: #eef6ff;
+  --select2-option-highlighted-background: #1870e8;
+  --select2-option-highlighted-text-color: #ffffff;
+  --select2-search-background: #f8fbff;
+  --select2-search-border-color: #d3e5f8;
+}
+
+/* Select2 (ng-select2-component) aligned to Tenants-app select style */
+ng-select2.qtm-select2-field,
+select2.qtm-select2-field {
+  display: block;
+  width: 100%;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.qtm-select2-field .select2-container {
+  width: 100% !important;
+  font-family: "Work Sans", Arial, Helvetica, sans-serif;
+}
+
+.qtm-select2-field .select2-container .select2-dropdown {
+  border: 1px solid #d3e5f8;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(31, 64, 120, 0.12);
+  overflow: hidden;
+}
+
+.qtm-select2-field .select2-container .select2-search,
+.qtm-select2-field .select2-container .select2-search--inline,
+.qtm-select2-field .select2-container .select2-search__field {
+  font-family: "Work Sans", Arial, Helvetica, sans-serif;
+}
+
+.qtm-select2-field .select2-container .select2-search--dropdown {
+  padding: 10px 12px 8px;
+  background: #ffffff;
+  border-bottom: 1px solid #eef3f9;
+}
+
+.qtm-select2-field .select2-container .select2-search__field {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 14px;
+  border: 1.5px solid #d3e5f8;
+  background: #edf6ff;
+  color: var(--Primary);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
+  outline: none;
+  box-shadow: none;
+}
+
+.qtm-select2-field .select2-container .select2-search__field:focus {
+  border-color: #1870e8;
+  box-shadow: 0 0 0 3px rgba(24, 112, 232, 0.12);
+}
+
+.qtm-select2-field .select2-container .select2-search__field::placeholder {
+  color: rgba(24, 112, 232, 0.6);
+  font-weight: 700;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--single,
+.qtm-select2-field .select2-container--default .select2-selection--multiple {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 1px solid #8bd1ff;
+  background: #eef8ff;
+  color: var(--Primary);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+.qtm-select2-field .select2-container--default.select2-focused .select2-selection--single,
+.qtm-select2-field .select2-container--default.select2-focused .select2-selection--multiple,
+.qtm-select2-field .select2-container--default.select2-container--open .select2-selection--single,
+.qtm-select2-field .select2-container--default.select2-container--open .select2-selection--multiple {
+  border-color: #216bf0;
+  box-shadow: 0 0 0 4px rgba(33, 107, 240, 0.12);
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__rendered,
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__placeholder,
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__placeholder span,
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__override,
+.qtm-select2-field .select2-container--default .select2-selection--multiple .select2-selection__placeholder,
+.qtm-select2-field .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+  font-family: "Work Sans", Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__rendered,
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__override,
+.qtm-select2-field .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+  color: var(--Primary) !important;
+  font-weight: 700;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__placeholder,
+.qtm-select2-field .select2-container--default .select2-selection--multiple .select2-selection__placeholder {
+  color: rgba(24, 112, 232, 0.6) !important;
+  font-weight: 700;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__arrow,
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__reset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 20px;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__reset {
+  color: #0e65ff;
+  font-size: 16px;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--single .select2-selection__arrow::before {
+  border-width: 4px 3.5px 0;
+  border-style: solid;
+  border-color: rgba(45, 71, 115, 0.55) transparent transparent;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+  padding: 0;
+}
+
+.qtm-select2-field .select2-container--default .select2-selection__choice {
+  background: #eef6ff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  margin-right: 6px;
+  color: var(--Primary);
+  font-weight: 700;
+  border: 1px solid rgba(24, 112, 232, 0.12);
+}
+
+.qtm-select2-field .select2-container--default .select2-results__option {
+  font-family: "Work Sans", Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #203c66;
+  padding: 10px 16px;
+}
+
+.qtm-select2-field .select2-container--default .select2-results__option.select2-results__option--selected {
+  background: #eef6ff;
+  color: #203c66;
+}
+
+.qtm-select2-field .select2-container--default .select2-results__option.select2-results__option--highlighted,
+.qtm-select2-field .select2-container--default .select2-results__option:hover {
+  background: #e3eefb;
+  color: #203c66;
+}
+
 
 /* --- Base Styles --- */
 body {
@@ -51,9 +234,9 @@ body {
 
 .card {
   background: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 8px 24px rgba(19, 31, 54, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* --- Typography --- */
@@ -331,9 +514,9 @@ label {
 }
 
 .primary-btn {
-  background: linear-gradient(90deg, #4667a8 0%, #2f67c7 100%);
+  background: linear-gradient(90deg, #1870e8 0%, #1fc4ff 100%);
   color: #fff;
-  box-shadow: 0 10px 18px rgba(47, 103, 199, 0.2);
+  box-shadow: 0 10px 24px rgba(24, 112, 232, 0.22);
 }
 
 .secondary-btn {
@@ -542,6 +725,9 @@ label {
   margin: 18px 0 28px;
   border: 1px solid #d7e6f5;
   box-shadow: 0 14px 32px rgba(31, 61, 110, 0.08);
+  position: relative;
+  z-index: 3;
+  overflow: visible;
 }
 
 .asl-filters-grid {
@@ -583,6 +769,58 @@ label {
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
 }
 
+.asl-filter-control {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.crud-input {
+  width: 100%;
+}
+
+.crud-input.ng-select {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+
+.crud-input.ng-select .ng-select-container {
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: 1.5px solid #d3e5f8;
+  background: #edf6ff;
+  color: #1a3a5d;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.crud-input.ng-select .ng-value,
+.crud-input.ng-select .ng-value-label,
+.crud-input.ng-select .ng-single-label,
+.crud-input.ng-select .ng-placeholder {
+  font-family: "Work Sans", Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--Primary) !important;
+}
+
+.crud-input.ng-select .ng-placeholder {
+  color: rgba(24, 112, 232, 0.6) !important;
+  font-weight: 700;
+}
+
+.crud-input.ng-select .ng-dropdown-panel .ng-option {
+  font-family: "Work Sans", Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  color: #203c66;
+  font-weight: 400;
+}
+
 .asl-filter-input:focus {
   border-color: #216bf0;
   box-shadow: 0 0 0 4px rgba(33, 107, 240, 0.12);
@@ -602,6 +840,8 @@ label {
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 20px 44px rgba(31, 61, 110, 0.12);
+  position: relative;
+  z-index: 1;
 }
 
 .asl-table-toolbar {

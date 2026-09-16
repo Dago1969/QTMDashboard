@@ -35,8 +35,10 @@ public class HospitalController {
 
     @PostMapping("/import")
     public ResponseEntity<List<HospitalDto>> importFromSource(@RequestBody HospitalImportRequest request) {
-        log.info("[HospitalController] POST /api/hospital/import sourceIds={}", request != null ? request.getSourceIds() : List.of());
-        List<HospitalDto> imported = hospitalService.importFromSource(request != null ? request.getSourceIds() : List.of());
+        log.info("[HospitalController] POST /api/hospital/import sourceIds={} hospitals={}",
+                request != null ? request.getSourceIds() : List.of(),
+                request != null && request.getHospitals() != null ? request.getHospitals().size() : 0);
+        List<HospitalDto> imported = hospitalService.importFromSource(request);
         log.info("[HospitalController] POST /api/hospital/import imported {} records", imported.size());
         return ResponseEntity.ok(imported);
     }

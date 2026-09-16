@@ -30,6 +30,23 @@ interface HospitalRecord {
   note?: string | null;
 }
 
+interface HospitalImportPayload {
+  id: number;
+  anno?: number;
+  codiceRegione?: string;
+  regione?: string;
+  codiceAsl?: string;
+  asl?: string;
+  codiceStruttura?: string;
+  struttura?: string;
+  comune?: string;
+  siglaProvincia?: string;
+  indirizzo?: string;
+  hospitalTypeId?: number;
+  tipoStruttura?: string;
+  aslId?: number;
+}
+
 @Component({
   selector: 'app-hospital-management',
   standalone: true,
@@ -68,9 +85,16 @@ interface HospitalRecord {
           </label>
           <label class="asl-filter-field">
             <span class="asl-filter-label">{{ t('hospital.filter.regionCode') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.regionCode">
+            <select class="asl-filter-input" [(ngModel)]="filters.regionCode" (ngModelChange)="onRegionFilterChange($event)">
               <option value="">{{ t('crud.select.all') }}</option>
               <option *ngFor="let region of regionOptions" [value]="region.code">{{ region.label }}</option>
+            </select>
+          </label>
+          <label class="asl-filter-field">
+            <span class="asl-filter-label">{{ t('patients.field.province') }}</span>
+            <select class="asl-filter-input" [(ngModel)]="filters.provinceCode">
+              <option value="">{{ t('crud.select.all') }}</option>
+              <option *ngFor="let prov of provinceOptionsFiltered" [value]="prov.value">{{ prov.label }}</option>
             </select>
           </label>
           <label class="asl-filter-field">
@@ -201,6 +225,7 @@ export class HospitalManagementComponent implements OnInit {
   filters = {
     id: '' as string,
     regionCode: '' as string,
+    provinceCode: '' as string,
     aslCode: '' as string,
     code: '' as string,
     name: '' as string,
@@ -214,6 +239,10 @@ export class HospitalManagementComponent implements OnInit {
   showTableSearch = false;
   tableSearchText = '';
   regionOptions: Array<{ code: string; label: string }> = [];
+  regionsRaw: Array<{ id: number; name: string; regionCode?: string; code?: string }> = [];
+  provinces: Array<{ id: number; name: string; sigla?: string; code?: string; regionId?: number }> = [];
+  provinceOptions: Array<{ value: string; label: string; regionId?: number }> = [];
+  provinceOptionsFiltered: Array<{ value: string; label: string; regionId?: number }> = [];
   typeOptions: string[] = [];
   translations: Record<string, string> = {};
   message = '';
@@ -227,6 +256,9 @@ export class HospitalManagementComponent implements OnInit {
   ngOnInit(): void {
     this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations: Record<string, string>) => {
       this.translations = translations;
+      // prefer loading reference data (regions/provinces) first so labels are available
+      this.loadRegions();
+      this.loadProvinces();
       this.loadOverview();
     });
   }
@@ -239,7 +271,10 @@ export class HospitalManagementComponent implements OnInit {
     this.http.get<HospitalRecord[]>(`${environment.apiBaseUrl}/hospital/overview`).subscribe({
       next: (records: HospitalRecord[]) => {
         this.allHospitalRecords = records;
-        this.regionOptions = this.buildRegionOptions(records);
+        // only build region options from records if we don't have regions from the service
+        if (!this.regionOptions || this.regionOptions.length === 0) {
+          this.regionOptions = this.buildRegionOptions(records);
+        }
         this.typeOptions = this.buildTypeOptions(records);
         this.currentPage = 1;
       },
@@ -275,6 +310,19 @@ export class HospitalManagementComponent implements OnInit {
       if (this.filters.imported === 'notImported' && hospital.imported) {
         return false;
       }
+      // province filter: try to match hospital.siglaProvincia with selected province value
+      if (this.filters.provinceCode) {
+        const selected = this.provinceOptions.find(p => p.value === this.filters.provinceCode);
+        if (selected) {
+          if (!hospital.siglaProvincia || String(hospital.siglaProvincia).toLowerCase() !== String(selected.value).toLowerCase()) {
+            return false;
+          }
+        } else {
+          if (!hospital.siglaProvincia || String(hospital.siglaProvincia).toLowerCase() !== String(this.filters.provinceCode).toLowerCase()) {
+            return false;
+          }
+        }
+      }
       return true;
     });
   }
@@ -284,7 +332,7 @@ export class HospitalManagementComponent implements OnInit {
   }
 
   resetFilters(): void {
-    this.filters = { id: '', regionCode: '', aslCode: '', code: '', name: '', type: '', imported: 'all' };
+    this.filters = { id: '', regionCode: '', provinceCode: '', aslCode: '', code: '', name: '', type: '', imported: 'all' };
     this.currentPage = 1;
   }
 
@@ -312,7 +360,8 @@ export class HospitalManagementComponent implements OnInit {
       return hospital.regione;
     }
     if (hospital.codiceRegione) {
-      return hospital.codiceRegione;
+      const label = this.findRegionLabel(hospital.codiceRegione);
+      return label ?? hospital.codiceRegione;
     }
     return '-';
   }
@@ -332,7 +381,8 @@ export class HospitalManagementComponent implements OnInit {
 
   formatMunicipality(hospital: HospitalRecord): string {
     if (hospital.comune && hospital.siglaProvincia) {
-      return `${hospital.comune} (${hospital.siglaProvincia})`;
+      const provLabel = this.findProvinceLabel(hospital.siglaProvincia);
+      return `${hospital.comune} (${provLabel ?? hospital.siglaProvincia})`;
     }
     return hospital.comune || hospital.siglaProvincia || '-';
   }
@@ -354,8 +404,24 @@ export class HospitalManagementComponent implements OnInit {
   }
 
   importRow(hospital: HospitalRecord): void {
-    const dashboardBase = (environment as any).dashboardApiBaseUrl || environment.apiBaseUrl;
-    this.http.post<HospitalRecord[]>(`${dashboardBase}/hospital/import`, { sourceIds: [hospital.id] }).subscribe({
+    const payload: HospitalImportPayload = {
+      id: hospital.id,
+      anno: hospital.anno,
+      codiceRegione: hospital.codiceRegione,
+      regione: hospital.regione,
+      codiceAsl: hospital.codiceAsl,
+      asl: hospital.asl,
+      codiceStruttura: hospital.codiceStruttura,
+      struttura: hospital.struttura,
+      comune: hospital.comune,
+      siglaProvincia: hospital.siglaProvincia,
+      indirizzo: hospital.indirizzo,
+      hospitalTypeId: hospital.hospitalTypeId,
+      tipoStruttura: hospital.tipoStruttura,
+      aslId: hospital.aslId
+    };
+
+    this.http.post<HospitalRecord[]>(`${environment.apiBaseUrl}/hospital/import`, { sourceIds: [hospital.id], hospitals: [payload] }).subscribe({
       next: () => {
         this.showMessage('hospital.messages.associateSuccess', 'success');
         this.loadOverview();
@@ -367,8 +433,7 @@ export class HospitalManagementComponent implements OnInit {
   }
 
   disassociateRow(hospital: HospitalRecord): void {
-    const dashboardBase = (environment as any).dashboardApiBaseUrl || environment.apiBaseUrl;
-    this.http.delete<void>(`${dashboardBase}/hospital/${hospital.id}`).subscribe({
+    this.http.delete<void>(`${environment.apiBaseUrl}/hospital/${hospital.id}`).subscribe({
       next: () => {
         this.showMessage('hospital.messages.disassociateSuccess', 'success');
         this.loadOverview();
@@ -377,6 +442,87 @@ export class HospitalManagementComponent implements OnInit {
         this.showErrorMessage(error, 'hospital.messages.disassociateError');
       }
     });
+  }
+
+  // Load regions from Ticket service for filters (keeps parity with ASL management)
+  private loadRegions(): void {
+    this.http.get<Array<{ id: number; name: string; regionCode?: string; code?: string }>>(`${environment.ticketApiBaseUrl}/regions`).subscribe({
+      next: (regions) => {
+        this.regionsRaw = regions ?? [];
+        this.regionOptions = (regions ?? []).map(r => ({ code: String(r.regionCode ?? r.code ?? r.id).padStart(2, '0'), label: r.name }));
+      },
+      error: () => {
+        // ignore silently for filters
+      }
+    });
+  }
+
+  private findRegionLabel(key: string | undefined | null): string | null {
+    if (!key) return null;
+    const k = String(key).trim();
+    const r = this.regionOptions.find(rt => {
+      if (!rt) return false;
+      if (String(rt.code).toLowerCase() === k.toLowerCase()) return true;
+      if (String(rt.code).replace(/^0+/, '') === k.replace(/^0+/, '')) return true;
+      return false;
+    });
+    return r ? r.label + (r.code ? ` (${r.code})` : '') : null;
+  }
+
+  private loadProvinces(): void {
+    this.http.get<Array<{ id: number; name: string; sigla?: string; code?: string; regionId?: number }>>(`${environment.ticketApiBaseUrl}/provinces`).subscribe({
+      next: (provs) => {
+        this.provinces = provs ?? [];
+        this.provinceOptions = (this.provinces ?? []).map(p => ({
+          value: String(p.sigla ?? p.code ?? p.id),
+          label: `${p.name}${p.sigla ? ` (${p.sigla})` : p.code ? ` (${p.code})` : ''}`,
+          regionId: p.regionId
+        }));
+        // initialize filtered list
+        this.provinceOptionsFiltered = [...this.provinceOptions];
+      },
+      error: () => {
+        // ignore silently
+      }
+    });
+  }
+
+  private findRegionIdFromCode(code: string | undefined | null): number | null {
+    if (!code) return null;
+    const k = String(code).trim();
+    const r = this.regionsRaw.find(rr => {
+      const candidate = String(rr.regionCode ?? rr.code ?? rr.id).padStart(2, '0');
+      if (candidate === k) return true;
+      if (candidate.replace(/^0+/, '') === k.replace(/^0+/, '')) return true;
+      return false;
+    });
+    return r ? r.id : null;
+  }
+
+  onRegionFilterChange(regionCode: string): void {
+    const regionId = this.findRegionIdFromCode(regionCode);
+    if (regionId !== null) {
+      this.provinceOptionsFiltered = this.provinceOptions.filter(p => p.regionId === regionId);
+    } else {
+      this.provinceOptionsFiltered = [...this.provinceOptions];
+    }
+    // reset province selection when region changes
+    this.filters.provinceCode = '';
+  }
+
+  private findProvinceLabel(key: string | undefined | null): string | null {
+    if (!key) return null;
+    const k = String(key).trim();
+    const p = this.provinces.find(pr => {
+      if (!pr) return false;
+      if (pr.sigla && String(pr.sigla).toLowerCase() === k.toLowerCase()) return true;
+      if (String(pr.id) === k) return true;
+      if ((pr as any).code && String((pr as any).code) === k) return true;
+      return false;
+    });
+    if (!p) return null;
+    const code = p.sigla ?? String(p.id ?? '');
+    return `${p.name}${code ? ` (${code})` : ''}`;
   }
 
   private showMessage(messageKey: string, type: 'success' | 'error'): void {

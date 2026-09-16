@@ -7,6 +7,7 @@ import { I18nPropertiesService } from '../core/i18n-properties.service';
   selector: 'qtm-step-modal',
   standalone: true,
   imports: [CommonModule],
+  // Ensure ng-select2 styles are available to components using the modal
   template: `
     <div class="qtm-modal-backdrop">
       <div class="qtm-modal" role="dialog" aria-modal="true">

@@ -75,16 +75,16 @@ interface RegionOption {
           </label>
           <label class="asl-filter-field">
             <span class="asl-filter-label">{{ t('patients.field.region') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.regionId" (ngModelChange)="onRegionChange($event)">
+            <select class="asl-filter-input" [(ngModel)]="filters.regionId" name="regionId" (ngModelChange)="onRegionChange($event)">
               <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let r of regions" [value]="r.id">{{ r.name }}{{ r.regionCode ? ' (' + padRegionCode(r.regionCode) + ')' : '' }}</option>
+              <option *ngFor="let r of regions" [ngValue]="toSelectValue(r.id)">{{ r.name }}{{ r.regionCode ? ' (' + padRegionCode(r.regionCode) + ')' : '' }}</option>
             </select>
           </label>
           <label class="asl-filter-field">
             <span class="asl-filter-label">{{ t('patients.field.province') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.provinceId">
+            <select class="asl-filter-input" [(ngModel)]="filters.provinceId" name="provinceId" [disabled]="!provinces.length">
               <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let p of provinces" [value]="p.id">{{ p.name }}</option>
+              <option *ngFor="let p of provinces" [ngValue]="toSelectValue(p.id)">{{ p.name }}</option>
             </select>
           </label>
           <div class="asl-filter-actions">
@@ -232,6 +232,8 @@ export class AslManagementComponent implements OnInit {
         this.allAslRecords = records;
         // reset paging when new data arrives
         this.currentPage = 1;
+        // try to fill missing province names from Ticket if backend did not resolve them
+        this.resolveMissingProvinces();
       },
       error: (error: { error?: ProblemDetailPayload }) => {
         this.showErrorMessage(error, 'asl.messages.loadError');
@@ -383,17 +385,56 @@ export class AslManagementComponent implements OnInit {
     });
   }
 
-  onRegionChange(regionId: string): void {
+  /**
+   * When overview records arrive some rows may miss provinciaDescrizione (backend could not resolve it).
+   * Try to resolve missing province names by fetching province by id from Ticket and patch the records.
+   */
+  private resolveMissingProvinces(): void {
+    const missingIds = Array.from(new Set(this.allAslRecords
+      .map(r => r.provinciaId)
+      .filter(id => id != null && !(this.provinces || []).some(p => String(p.id) === String(id)))));
+    if (missingIds.length === 0) return;
+
+    missingIds.forEach((pid) => {
+      // fetch province details and apply to records and select list
+      this.http.get<{ id: number; name: string }>(`${environment.ticketApiBaseUrl}/provinces/${pid}`).subscribe({
+        next: (prov) => {
+          if (!prov) return;
+          // add to provinces list if not present
+          if (!this.provinces.some(p => String(p.id) === String(prov.id))) {
+            this.provinces.push({ id: prov.id, name: prov.name });
+          }
+          // patch matching ASL records
+          this.allAslRecords.forEach((r) => {
+            if (r.provinciaId != null && String(r.provinciaId) === String(prov.id) && !r.provinciaDescrizione) {
+              r.provinciaDescrizione = prov.name;
+            }
+          });
+        },
+        error: () => {
+          // ignore
+        }
+      });
+    });
+  }
+
+  onRegionChange(regionId: string | number | null | undefined): void {
+    const normalizedRegionId = String(regionId ?? '').trim();
+    this.filters.regionId = normalizedRegionId;
     this.filters.provinceId = '';
     this.provinces = [];
     this.currentPage = 1;
     // set regionCode for filtering using region.regionCode returned by API
-    const sel = this.regions.find((r) => String(r.id) === String(regionId));
+    const sel = this.regions.find((r) => String(r.id) === normalizedRegionId);
     const resolvedRegionCode = sel ? this.resolveRegionCode(sel) : '';
     this.filters.regionCode = resolvedRegionCode ? this.padRegionCode(resolvedRegionCode) : '';
-    if (regionId) {
-      this.loadProvinces(Number(regionId));
+    if (normalizedRegionId) {
+      this.loadProvinces(Number(normalizedRegionId));
     }
+  }
+
+  toSelectValue(value: string | number | null | undefined): string {
+    return value == null ? '' : String(value);
   }
 
   private resolveRegionCode(region: RegionOption): string {

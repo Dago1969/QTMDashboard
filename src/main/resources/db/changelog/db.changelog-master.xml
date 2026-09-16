@@ -42,6 +42,9 @@
 
     <include file="20260912-02-create-structure-department-table.xml" relativeToChangelogFile="true"/>
 
+    <!-- Ensure hospital table columns align with expected schema (idempotent) -->
+    <include file="20260916-01-align-hospital-table.xml" relativeToChangelogFile="true"/>
+
     <include file="20260909-01-add-caregiver-relationship.yaml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

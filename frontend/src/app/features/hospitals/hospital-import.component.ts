@@ -77,7 +77,8 @@ export class HospitalImportComponent {
     formData.append('file', this.selectedFile);
     this.uploading = true;
 
-    this.http.post(`${environment.ticketApiBaseUrl}/hospitals/import`, formData).subscribe({
+    const ticketBase = (environment as any).NG_APP_TICKET_API_BASE_URL || environment.ticketApiBaseUrl;
+    this.http.post(`${ticketBase}/hospitals/import`, formData).subscribe({
       next: () => {
         this.message = this.t('hospital.import.success');
         this.messageType = 'success';

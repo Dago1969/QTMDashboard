@@ -52,6 +52,7 @@ class ASLServiceTest {
                 .denominazioneAzienda("ASL AVEZZANO-SULMONA-L'AQUILA")
                 .codiceRegione("13")
                 .cityId(5394L)
+            .provinceId(6L)
                 .indirizzo("VIA G. BELLISARI SNC")
                 .telefono("0862.3681")
                 .email("direzione.generale@asl-laquila.it")
@@ -69,13 +70,9 @@ class ASLServiceTest {
         province.setId(6L);
         province.setName("L'Aquila");
         province.setRegion(region);
-        TicketGeographyService.TicketCity city = new TicketGeographyService.TicketCity();
-        city.setId(5394L);
-        city.setName("Avezzano");
-        city.setProvince(province);
 
         when(aslRepository.findAll()).thenReturn(List.of(localEntity));
-        when(ticketGeographyService.findCityById(5394L)).thenReturn(java.util.Optional.of(city));
+        when(ticketGeographyService.findProvinceById(6L)).thenReturn(java.util.Optional.of(province));
         when(ticketGeographyService.findRegionByCode("13")).thenReturn(java.util.Optional.of(region));
         doReturn(requestHeadersUriSpec).when(restClient).get();
         doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
@@ -102,21 +99,13 @@ class ASLServiceTest {
                 .codiceAzienda("101")
                 .denominazioneAzienda("RM/A")
                 .codiceRegione("12")
-                .cityId(6068L)
                 .indirizzo("VIA ARIOSTO 3/9")
                 .build();
 
         TicketGeographyService.TicketRegion lazio = new TicketGeographyService.TicketRegion();
         lazio.setId(12L); lazio.setRegionCode("12"); lazio.setName("Lazio");
-        TicketGeographyService.TicketRegion campania = new TicketGeographyService.TicketRegion();
-        campania.setId(15L); campania.setRegionCode("15"); campania.setName("Campania");
-        TicketGeographyService.TicketProvince avellino = new TicketGeographyService.TicketProvince();
-        avellino.setId(64L); avellino.setName("Avellino"); avellino.setRegion(campania);
-        TicketGeographyService.TicketCity mismatchedCity = new TicketGeographyService.TicketCity();
-        mismatchedCity.setId(6068L); mismatchedCity.setName("Avellino"); mismatchedCity.setProvince(avellino);
 
         when(aslRepository.findAll()).thenReturn(List.of());
-        when(ticketGeographyService.findCityById(6068L)).thenReturn(java.util.Optional.of(mismatchedCity));
         when(ticketGeographyService.findRegionByCode("12")).thenReturn(java.util.Optional.of(lazio));
         doReturn(requestHeadersUriSpec).when(restClient).get();
         doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
@@ -129,6 +118,42 @@ class ASLServiceTest {
         assertThat(overview.get(0).getRegioneDescrizione()).isEqualTo("Lazio");
         assertThat(overview.get(0).getProvinciaDescrizione()).isNull();
         assertThat(overview.get(0).getProvinciaId()).isNull();
+    }
+
+    @Test
+    void findAllWithImportStatusShouldPreferSourceProvinceIdForProvinceDisplay() {
+        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://ticket.test");
+
+        ASLDto source = ASLDto.builder()
+                .id(91L)
+                .anno(2015)
+                .codiceAzienda("101")
+                .denominazioneAzienda("RM/A")
+                .codiceRegione("12")
+                .cityId(6068L)
+                .provinceId(58L)
+                .indirizzo("VIA ARIOSTO 3/9")
+                .build();
+
+        TicketGeographyService.TicketRegion lazio = new TicketGeographyService.TicketRegion();
+        lazio.setId(12L); lazio.setRegionCode("12"); lazio.setName("Lazio");
+        TicketGeographyService.TicketProvince roma = new TicketGeographyService.TicketProvince();
+        roma.setId(58L); roma.setName("Roma"); roma.setRegion(lazio);
+
+        when(aslRepository.findAll()).thenReturn(List.of());
+        when(ticketGeographyService.findProvinceById(58L)).thenReturn(java.util.Optional.of(roma));
+        when(ticketGeographyService.findRegionByCode("12")).thenReturn(java.util.Optional.of(lazio));
+        doReturn(requestHeadersUriSpec).when(restClient).get();
+        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(ASLDto[].class)).thenReturn(new ASLDto[]{source});
+
+        var overview = aslService.findAllWithImportStatus();
+
+        assertThat(overview).hasSize(1);
+        assertThat(overview.get(0).getProvinciaId()).isEqualTo(58L);
+        assertThat(overview.get(0).getProvinciaDescrizione()).isEqualTo("Roma");
+        assertThat(overview.get(0).getRegioneDescrizione()).isEqualTo("Lazio");
     }
 
     @Test

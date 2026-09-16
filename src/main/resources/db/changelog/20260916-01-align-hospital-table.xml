@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260916-01-add-codice-regione" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="hospital"/>
+                <not><columnExists tableName="hospital" columnName="codice_regione"/></not>
+            </and>
+        </preConditions>
+        <addColumn tableName="hospital">
+            <column name="codice_regione" type="VARCHAR(50)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospital" columnName="codice_regione"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20260916-02-add-codice-asl" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="hospital"/>
+                <not><columnExists tableName="hospital" columnName="codice_asl"/></not>
+            </and>
+        </preConditions>
+        <addColumn tableName="hospital">
+            <column name="codice_asl" type="VARCHAR(50)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospital" columnName="codice_asl"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20260916-03-add-codice-struttura" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="hospital"/>
+                <not><columnExists tableName="hospital" columnName="codice_struttura"/></not>
+            </and>
+        </preConditions>
+        <addColumn tableName="hospital">
+            <column name="codice_struttura" type="VARCHAR(100)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospital" columnName="codice_struttura"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20260916-04-add-struttura" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="hospital"/>
+                <not><columnExists tableName="hospital" columnName="struttura"/></not>
+            </and>
+        </preConditions>
+        <addColumn tableName="hospital">
+            <column name="struttura" type="VARCHAR(255)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospital" columnName="struttura"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20260916-05-add-asl-id" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="hospital"/>
+                <not><columnExists tableName="hospital" columnName="asl_id"/></not>
+            </and>
+        </preConditions>
+        <addColumn tableName="hospital">
+            <column name="asl_id" type="BIGINT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospital" columnName="asl_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20260916-06-add-referents-json" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="hospital"/>
+                <not><columnExists tableName="hospital" columnName="referents_json"/></not>
+            </and>
+        </preConditions>
+        <addColumn tableName="hospital">
+            <column name="referents_json" type="VARCHAR(8000)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="hospital" columnName="referents_json"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

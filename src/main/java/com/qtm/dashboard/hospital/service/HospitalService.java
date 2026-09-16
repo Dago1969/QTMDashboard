@@ -1,6 +1,7 @@
 package com.qtm.dashboard.hospital.service;
 
 import com.qtm.commonlib.dto.HospitalDto;
+import com.qtm.dashboard.hospital.dto.HospitalImportRequest;
 import com.qtm.dashboard.hospital.dto.HospitalOverviewDto;
 import com.qtm.dashboard.hospital.entity.HospitalEntity;
 import com.qtm.dashboard.hospital.mapper.HospitalMapper;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,14 +33,20 @@ public class HospitalService {
     private final HospitalMapper hospitalMapper;
     private final RestClient restClient;
     private final String ticketBaseUrl;
+    private final String ticketApiRootUrl;
 
     @Autowired
     public HospitalService(
             HospitalRepository hospitalRepository,
             HospitalMapper hospitalMapper,
-                @Value("${app.ticket.base-url:http://localhost:8084/api}") String ticketBaseUrl
+                @Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
     ) {
-        this(hospitalRepository, hospitalMapper, RestClient.builder().baseUrl(ticketBaseUrl).build(), ticketBaseUrl);
+        this(
+            hospitalRepository,
+            hospitalMapper,
+            RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build(),
+            ticketBaseUrl
+        );
     }
 
     HospitalService(
@@ -50,7 +58,8 @@ public class HospitalService {
         this.hospitalRepository = hospitalRepository;
         this.hospitalMapper = hospitalMapper;
         this.restClient = restClient;
-        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
+        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "qtm.ticket.base-url mancante");
+        this.ticketApiRootUrl = deriveTicketApiRootUrl(ticketBaseUrl);
     }
 
     @Transactional(readOnly = true)
@@ -94,12 +103,33 @@ public class HospitalService {
     }
 
     @Transactional
-    public List<HospitalDto> importFromSource(List<Long> sourceIds) {
-        log.info("[HospitalService] importazione ospedali da sourceIds={}", sourceIds);
-        return sourceIds.stream()
-                .filter(Objects::nonNull)
-                .map(this::importOneFromTicket)
-                .toList();
+        public List<HospitalDto> importFromSource(HospitalImportRequest request) {
+        List<Long> sourceIds = request != null && request.getSourceIds() != null ? request.getSourceIds() : List.of();
+        List<HospitalDto> providedHospitals = request != null && request.getHospitals() != null ? request.getHospitals() : List.of();
+
+        log.info("[HospitalService] importazione ospedali da sourceIds={} providedHospitals={}", sourceIds, providedHospitals.size());
+
+        Map<Long, HospitalDto> providedHospitalMap = providedHospitals.stream()
+            .filter(Objects::nonNull)
+            .filter(hospital -> hospital.getId() != null)
+            .collect(Collectors.toMap(HospitalDto::getId, hospital -> hospital, (left, right) -> left));
+
+        List<HospitalDto> importedFromIds = sourceIds.stream()
+            .filter(Objects::nonNull)
+            .map(sourceId -> Optional.ofNullable(providedHospitalMap.get(sourceId))
+                .map(this::saveImportedHospital)
+                .orElseGet(() -> importOneFromTicket(sourceId)))
+            .toList();
+
+        List<HospitalDto> importedOnlyFromPayload = providedHospitals.stream()
+            .filter(Objects::nonNull)
+            .filter(hospital -> hospital.getId() != null)
+            .filter(hospital -> !sourceIds.contains(hospital.getId()))
+            .map(this::saveImportedHospital)
+            .toList();
+
+        return java.util.stream.Stream.concat(importedFromIds.stream(), importedOnlyFromPayload.stream())
+            .toList();
     }
 
     private HospitalDto importOneFromTicket(Long sourceId) {
@@ -115,16 +145,20 @@ public class HospitalService {
             }
 
             dto.setId(sourceId);
-            HospitalEntity entity = Objects.requireNonNull(hospitalMapper.dtoToEntity(dto), "Entity ospedale non valorizzata");
-            hospitalRepository.findById(Objects.requireNonNull(sourceId, "Source hospital id mancante"))
-                    .ifPresent(existing -> entity.setNote(existing.getNote()));
-            HospitalDto saved = hospitalMapper.entityToDto(hospitalRepository.save(entity));
+            HospitalDto saved = saveImportedHospital(dto);
             log.info("[HospitalService] importOneFromTicket id={} salvata", sourceId);
             return saved;
         } catch (Exception ex) {
             log.error("[HospitalService] errore importOneFromTicket id={}", sourceId, ex);
             throw mapTicketException(ex, "/hospitals/" + sourceId);
         }
+    }
+
+    private HospitalDto saveImportedHospital(HospitalDto hospitalDto) {
+        HospitalEntity entity = Objects.requireNonNull(hospitalMapper.dtoToEntity(hospitalDto), "Entity ospedale non valorizzata");
+        hospitalRepository.findById(Objects.requireNonNull(hospitalDto.getId(), "Source hospital id mancante"))
+                .ifPresent(existing -> entity.setNote(existing.getNote()));
+        return hospitalMapper.entityToDto(hospitalRepository.save(entity));
     }
 
     private List<HospitalDto> fetchAllHospitalsFromTicket() {
@@ -144,7 +178,7 @@ public class HospitalService {
     }
 
     private ResponseStatusException mapTicketException(Exception exception, String resourcePath) {
-        String targetUrl = ticketBaseUrl + resourcePath;
+        String targetUrl = ticketApiRootUrl + resourcePath;
         if (exception instanceof ResponseStatusException responseStatusException) {
             return responseStatusException;
         }
@@ -158,12 +192,29 @@ public class HospitalService {
         }
         if (exception instanceof ResourceAccessException) {
             String detail = String.format(
-                    "QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che app.ticket.base-url sia corretto.",
+                    "QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che qtm.ticket.base-url sia corretto.",
                     targetUrl
             );
             return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
         }
         String detail = String.format("Errore durante la chiamata a QTMTicket su %s.", targetUrl);
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
+    }
+
+    private static String deriveTicketApiRootUrl(String ticketBaseUrl) {
+        String normalizedBaseUrl = Objects.requireNonNull(ticketBaseUrl, "qtm.ticket.base-url mancante").trim();
+        if (normalizedBaseUrl.endsWith("/")) {
+            normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
+        }
+        if (normalizedBaseUrl.endsWith("/api")) {
+            return normalizedBaseUrl;
+        }
+        if (normalizedBaseUrl.endsWith("/api/ticket/api")) {
+            return normalizedBaseUrl;
+        }
+        if (normalizedBaseUrl.endsWith("/api/ticket")) {
+            return normalizedBaseUrl + "/api";
+        }
+        return normalizedBaseUrl + "/api";
     }
 }

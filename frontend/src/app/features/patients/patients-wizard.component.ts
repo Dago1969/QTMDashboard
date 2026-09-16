@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, QueryList, ViewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Select2 } from 'ng-select2-component';
 import { Subscription } from 'rxjs';
 import intlTelInput, { type AllOptions, type Iti } from 'intl-tel-input';
 import { PatientApiService, PatientDto } from '../../core/patient-api.service';
@@ -90,7 +91,7 @@ interface ConsentOtpState {
 @Component({
   selector: 'app-patients-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule, QtmStepModalComponent],
+  imports: [CommonModule, FormsModule, Select2, QtmStepModalComponent],
   template: `
     <qtm-step-modal
       [title]="t(pageTitleKey)"
@@ -114,22 +115,40 @@ interface ConsentOtpState {
           <ng-container *ngIf="field.key === 'regionId'; else normalField">
             <div class="location-row">
               <div class="location-item">
-                <select [(ngModel)]="model.regionId" name="regionId" (ngModelChange)="onFieldValueChange('regionId')">
-                  <option value=""></option>
-                  <option *ngFor="let option of getOptionsForKey('regionId')" [value]="option.value">{{ t(option.labelKey) }}</option>
-                </select>
+                <ng-select2
+                  class="qtm-select2-field"
+                  [(ngModel)]="model.regionId"
+                  name="regionId"
+                  [data]="toSelect2Data(regions)"
+                  (update)="onFieldValueChange('regionId')"
+                  [placeholder]="t('patients.field.region')"
+                  [displaySearchStatus]="'hidden'"
+                  [resettable]="true"
+                ></ng-select2>
               </div>
               <div class="location-item">
-                <select [(ngModel)]="model.provinceId" name="provinceId" (ngModelChange)="onFieldValueChange('provinceId')">
-                  <option value=""></option>
-                  <option *ngFor="let option of getOptionsForKey('provinceId')" [value]="option.value">{{ t(option.labelKey) }}</option>
-                </select>
+                <ng-select2
+                  class="qtm-select2-field"
+                  [(ngModel)]="model.provinceId"
+                  name="provinceId"
+                  [data]="toSelect2Data(provinces)"
+                  (update)="onFieldValueChange('provinceId')"
+                  [placeholder]="t('patients.field.province')"
+                  [displaySearchStatus]="'hidden'"
+                  [resettable]="true"
+                ></ng-select2>
               </div>
               <div class="location-item">
-                <select [(ngModel)]="model.cityId" name="cityId" (ngModelChange)="onFieldValueChange('cityId')">
-                  <option value=""></option>
-                  <option *ngFor="let option of getOptionsForKey('cityId')" [value]="option.value">{{ t(option.labelKey) }}</option>
-                </select>
+                <ng-select2
+                  class="qtm-select2-field"
+                  [(ngModel)]="model.cityId"
+                  name="cityId"
+                  [data]="toSelect2Data(cities)"
+                  (update)="onFieldValueChange('cityId')"
+                  [placeholder]="t('patients.field.city')"
+                  [displaySearchStatus]="'hidden'"
+                  [resettable]="true"
+                ></ng-select2>
               </div>
             </div>
           </ng-container>
@@ -328,6 +347,10 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
   private phoneInputBindings = new Map<keyof PatientFormModel, PhoneInputBinding>();
 
   private readonly subscriptions = new Subscription();
+
+  toSelect2Data(items: GeographicOption[]): Array<{ value: string; label: string; id: string }> {
+    return items.map(i => ({ value: String(i.id), label: i.name, id: String(i.id) }));
+  }
 
   private createConsentOtpState(): ConsentOtpState {
     return { pending: false, sent: false, verified: false, destination: '', statusKey: null };

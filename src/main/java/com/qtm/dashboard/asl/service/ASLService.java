@@ -101,51 +101,42 @@ public class ASLService {
         List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
         Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
                 .collect(Collectors.toMap(ASLEntity::getId, entity -> entity));
-        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketCity> cityMap = loadCitiesById(sourceAsls);
+        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> provinceMap = loadProvincesById(sourceAsls);
         Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap = loadRegionsByCode(sourceAsls);
 
         return sourceAsls.stream()
-            .map(source -> toOverviewDto(source, localAslMap.get(source.getId()), cityMap.get(source.getCityId()), regionMap))
+            .map(source -> toOverviewDto(source, localAslMap.get(source.getId()), provinceMap.get(source.getProvinceId()), regionMap))
                 .toList();
     }
 
         /**
          * Arricchisce l'overview ASL con anno e anagrafiche geografiche derivate dal comune sorgente.
          */
-        private ASLOverviewDto toOverviewDto(ASLDto source, ASLEntity localEntity, com.qtm.dashboard.geography.TicketGeographyService.TicketCity city, Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap) {
-        // try resolving geography first via QTMTicket (prefer remote authoritative data)
-        com.qtm.dashboard.geography.TicketGeographyService.TicketProvince ticketProvince = null;
+        private ASLOverviewDto toOverviewDto(ASLDto source, ASLEntity localEntity,
+                                             com.qtm.dashboard.geography.TicketGeographyService.TicketProvince sourceProvince,
+                                             Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap) {
+        com.qtm.dashboard.geography.TicketGeographyService.TicketProvince ticketProvince = sourceProvince;
         com.qtm.dashboard.geography.TicketGeographyService.TicketRegion ticketRegion = null;
-        if (ticketGeographyService != null && source.getCityId() != null) {
-            ticketProvince = ticketGeographyService.findCityById(source.getCityId())
-                .map(com.qtm.dashboard.geography.TicketGeographyService.TicketCity::getProvince)
-                .orElse(null);
-        }
         String normalizedRegionCode = normalizeRegionCode(source.getCodiceRegione());
         if (ticketGeographyService != null && normalizedRegionCode != null) {
             ticketRegion = ticketGeographyService.findRegionByCode(normalizedRegionCode).orElse(null);
         }
 
-        var province = city != null ? city.getProvince() : null;
-        var cityRegion = province != null ? province.getRegion() : null;
+        var provinceRegion = ticketProvince != null ? ticketProvince.getRegion() : null;
         com.qtm.dashboard.geography.TicketGeographyService.TicketRegion regionFromCode = normalizedRegionCode == null ? null : regionMap.get(normalizedRegionCode);
 
-        boolean cityRegionMatchesSource = cityRegion != null
+        boolean provinceRegionMatchesSource = provinceRegion != null
             && normalizedRegionCode != null
-            && normalizedRegionCode.equals(normalizeRegionCode(cityRegion.getRegionCode()));
+            && normalizedRegionCode.equals(normalizeRegionCode(provinceRegion.getRegionCode()));
 
-        // resolvedProvince: prefer ticketProvince if available
         Long resolvedProvinceId = null;
         String resolvedProvinceName = null;
         if (ticketProvince != null) {
             resolvedProvinceId = ticketProvince.getId();
             resolvedProvinceName = ticketProvince.getName();
-        } else if (cityRegionMatchesSource && province != null) {
-            resolvedProvinceId = province.getId();
-            resolvedProvinceName = province.getName();
         }
 
-        var resolvedRegion = (ticketRegion != null) ? ticketRegion : (regionFromCode != null ? regionFromCode : (cityRegionMatchesSource ? cityRegion : null));
+        var resolvedRegion = (ticketRegion != null) ? ticketRegion : (regionFromCode != null ? regionFromCode : (provinceRegionMatchesSource ? provinceRegion : null));
         return ASLOverviewDto.builder()
             .id(source.getId())
             .anno(source.getAnno())
@@ -163,16 +154,16 @@ public class ASLService {
             .build();
         }
 
-        private Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketCity> loadCitiesById(List<ASLDto> sourceAsls) {
-        List<Long> cityIds = sourceAsls.stream()
-            .map(ASLDto::getCityId)
+        private Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> loadProvincesById(List<ASLDto> sourceAsls) {
+        List<Long> provinceIds = sourceAsls.stream()
+            .map(ASLDto::getProvinceId)
             .filter(Objects::nonNull)
             .distinct()
             .toList();
-        return cityIds.stream()
-            .map(id -> ticketGeographyService == null ? null : ticketGeographyService.findCityById(id).orElse(null))
+        return provinceIds.stream()
+            .map(id -> ticketGeographyService == null ? null : ticketGeographyService.findProvinceById(id).orElse(null))
             .filter(Objects::nonNull)
-            .collect(Collectors.toMap(com.qtm.dashboard.geography.TicketGeographyService.TicketCity::getId, city -> city));
+            .collect(Collectors.toMap(com.qtm.dashboard.geography.TicketGeographyService.TicketProvince::getId, province -> province));
         }
 
         private Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> loadRegionsByCode(List<ASLDto> sourceAsls) {

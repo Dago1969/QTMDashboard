@@ -1,5 +1,7 @@
 package com.qtm.dashboard.geography;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,11 +19,12 @@ public class TicketGeographyService {
     private final RestClient restClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<Long, TicketCity> cityCache = new ConcurrentHashMap<>();
+    private final Map<Long, TicketProvince> provinceByIdCache = new ConcurrentHashMap<>();
     private final Map<String, TicketRegion> regionCache = new ConcurrentHashMap<>();
     private final Map<String, TicketProvince> provinceCache = new ConcurrentHashMap<>();
 
     public TicketGeographyService(@Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl) {
-        this.restClient = RestClient.builder().baseUrl(ticketBaseUrl).build();
+        this.restClient = RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build();
     }
 
     public Optional<TicketCity> findCityById(Long cityId) {
@@ -82,7 +86,44 @@ public class TicketGeographyService {
         }
     }
 
+    public Optional<TicketProvince> findProvinceById(Long provinceId) {
+        if (provinceId == null) return Optional.empty();
+        try {
+            return Optional.ofNullable(provinceByIdCache.computeIfAbsent(provinceId, id -> {
+                try {
+                    String body = restClient.get().uri("/provinces/{id}", id).retrieve().body(String.class);
+                    if (body == null || body.isBlank()) return null;
+                    return objectMapper.readValue(body, TicketProvince.class);
+                } catch (Exception e) {
+                    log.warn("Impossibile caricare province {} da Ticket: {}", id, e.getMessage());
+                    return null;
+                }
+            }));
+        } catch (Exception ex) {
+            log.warn("Errore nella lookup province {}: {}", provinceId, ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private static String deriveTicketApiRootUrl(String ticketBaseUrl) {
+        String normalizedBaseUrl = Objects.requireNonNull(ticketBaseUrl, "qtm.ticket.base-url mancante").trim();
+        if (normalizedBaseUrl.endsWith("/")) {
+            normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
+        }
+        if (normalizedBaseUrl.endsWith("/api")) {
+            return normalizedBaseUrl + "/";
+        }
+        if (normalizedBaseUrl.endsWith("/api/ticket/api")) {
+            return normalizedBaseUrl + "/";
+        }
+        if (normalizedBaseUrl.endsWith("/api/ticket")) {
+            return normalizedBaseUrl + "/api/";
+        }
+        return normalizedBaseUrl + "/api/";
+    }
+
     // Simple DTOs for mapping ticket responses (only required fields)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TicketCity {
         private Long id;
         private String name;
@@ -96,10 +137,13 @@ public class TicketGeographyService {
         public void setProvince(TicketProvince province) { this.province = province; }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TicketProvince {
         private Long id;
         private String code;
         private String name;
+        private Long regionId;
+        private String sigla;
         private TicketRegion region;
 
         public Long getId() { return id; }
@@ -108,12 +152,18 @@ public class TicketGeographyService {
         public void setCode(String code) { this.code = code; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
+        public Long getRegionId() { return regionId; }
+        public void setRegionId(Long regionId) { this.regionId = regionId; }
+        public String getSigla() { return sigla; }
+        public void setSigla(String sigla) { this.sigla = sigla; }
         public TicketRegion getRegion() { return region; }
         public void setRegion(TicketRegion region) { this.region = region; }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TicketRegion {
         private Long id;
+        @JsonAlias("code")
         private String regionCode;
         private String name;
 

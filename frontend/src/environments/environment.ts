@@ -10,7 +10,7 @@ export const environment = {
   // Priorità: runtime env `NG_APP_API_BASE_URL` (es. espresso da nginx/proxy) -> valore statico di fallback
   dashboardApiBaseUrl: (typeof window !== 'undefined' && (window as any).NG_APP_API_BASE_URL)
     ? (window as any).NG_APP_API_BASE_URL
-    : 'http://XXXXlocalhost:8086/api',
+    : 'http://localhost:8086/api',
   // Il frontend usa un base path pulito; proxy locale/nginx lo inoltrano al context-path reale di QTMTicket.
   ticketApiBaseUrl: (typeof window !== 'undefined' && (window as any).NG_APP_TICKET_API_BASE_URL)
     ? (window as any).NG_APP_TICKET_API_BASE_URL
