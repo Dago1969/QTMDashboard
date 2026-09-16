@@ -168,6 +168,7 @@ export class StructureDepartmentsManagementComponent {
   }
 
   onRegionChange(): void {
+    // update available ASL/hospitals for selected region and apply filter immediately
     this.aslOptions = this.getAvailableAslOptions();
     if (this.filters.aslCode && !this.aslOptions.some((option) => option.code === this.filters.aslCode)) {
       this.filters.aslCode = '';
@@ -176,6 +177,7 @@ export class StructureDepartmentsManagementComponent {
     if (this.filters.hospitalCode && !this.hospitalOptions.some((option) => option.code === this.filters.hospitalCode)) {
       this.filters.hospitalCode = '';
     }
+    this.loadOverview();
   }
 
   onAslChange(): void {
@@ -183,6 +185,7 @@ export class StructureDepartmentsManagementComponent {
     if (this.filters.hospitalCode && !this.hospitalOptions.some((option) => option.code === this.filters.hospitalCode)) {
       this.filters.hospitalCode = '';
     }
+    this.loadOverview();
   }
 
   onHospitalChange(): void {
@@ -276,13 +279,17 @@ export class StructureDepartmentsManagementComponent {
       next: ({ regions, others }) => {
         // map ticket regions to FilterOption shape (use regionCode as code when available)
         const mappedRegions: FilterOption[] = (regions || []).map((r) => ({
-          code: r.regionCode ? String(r.regionCode).padStart(2, '0') : String(r.id),
+          code: r.regionCode ? String(r.regionCode) : String(r.id),
           label: r.name,
-          regionCode: r.regionCode ? String(r.regionCode).padStart(2, '0') : undefined
+          regionCode: r.regionCode ? String(r.regionCode) : undefined
         }));
-        this.allRegionOptions = this.uniqueOptions(mappedRegions.concat(others.regions || []));
-        this.allAslOptions = this.uniqueOptions(others.asls || []);
-        this.allHospitalOptions = this.uniqueOptions(others.hospitals || []);
+        // normalize region options from both sources and deduplicate by normalized code
+        const normalizedMapped = mappedRegions.map((option) => this.normalizeRegionOption(option));
+        const normalizedOthersRegions = (others.regions || []).map((option) => this.normalizeRegionOption(option));
+        this.allRegionOptions = this.uniqueOptions(normalizedMapped.concat(normalizedOthersRegions));
+        // normalize ASL and hospital options (dependent) so codes/regionCodes are comparable
+        this.allAslOptions = this.uniqueOptions((others.asls || []).map((option) => this.normalizeDependentOption(option)));
+        this.allHospitalOptions = this.uniqueOptions((others.hospitals || []).map((option) => this.normalizeDependentOption(option)));
         this.refreshAvailableOptions();
         this.loadOverview();
       },
@@ -297,7 +304,18 @@ export class StructureDepartmentsManagementComponent {
   }
 
   private getAvailableAslOptions(): FilterOption[] {
-    return this.uniqueOptions(this.allAslOptions.filter((option) => !this.filters.regionCode || option.regionCode === this.filters.regionCode));
+    if (!this.filters.regionCode) {
+      return this.uniqueOptions(this.allAslOptions);
+    }
+    const region = this.filters.regionCode;
+    // ASL that explicitly declare the same region
+    const explicit = this.allAslOptions.filter((option) => option.regionCode === region);
+    // ASL that have at least one hospital in the selected region
+    const hospitalsInRegionAslCodes = new Set(
+      this.allHospitalOptions.filter((h) => h.regionCode === region).map((h) => h.aslCode).filter(Boolean)
+    );
+    const viaHospitals = this.allAslOptions.filter((option) => hospitalsInRegionAslCodes.has(option.aslCode));
+    return this.uniqueOptions(explicit.concat(viaHospitals));
   }
 
   private getAvailableHospitalOptions(): FilterOption[] {
@@ -314,6 +332,46 @@ export class StructureDepartmentsManagementComponent {
     return options
       .filter((option, index, source) => !!option.code && source.findIndex((candidate) => candidate.code === option.code) === index)
       .sort((first, second) => first.label.localeCompare(second.label));
+  }
+
+  private normalizeRegionOption(option: FilterOption): FilterOption {
+    const regionCode = this.normalizeRegionCode(option.regionCode ?? option.code);
+    return {
+      ...option,
+      code: regionCode ?? '',
+      regionCode,
+      label: this.formatRegionLabel(option.label, regionCode)
+    };
+  }
+
+  private normalizeDependentOption(option: FilterOption): FilterOption {
+    return {
+      ...option,
+      code: this.normalizeValue(option.code) ?? '',
+      regionCode: this.normalizeRegionCode(option.regionCode),
+      aslCode: this.normalizeValue(option.aslCode)
+    };
+  }
+
+  private formatRegionLabel(label: string, regionCode?: string): string {
+    const normalizedLabel = this.normalizeValue(label) ?? '';
+    if (!regionCode || !normalizedLabel || /\([^)]*\)\s*$/.test(normalizedLabel)) {
+      return normalizedLabel;
+    }
+    return `${normalizedLabel} (${regionCode})`;
+  }
+
+  private normalizeRegionCode(value?: string): string | undefined {
+    const normalizedValue = this.normalizeValue(value);
+    if (!normalizedValue) {
+      return undefined;
+    }
+    return /^\d+$/.test(normalizedValue) ? normalizedValue.padStart(2, '0') : normalizedValue;
+  }
+
+  private normalizeValue(value?: string): string | undefined {
+    const normalizedValue = value?.trim();
+    return normalizedValue ? normalizedValue : undefined;
   }
 
   private showErrorMessage(error: { error?: ProblemDetailPayload }, fallbackKey: string): void {
