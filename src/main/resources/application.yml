@@ -86,7 +86,7 @@ app:
         enabled: true
   ticket:
     # FIXME Francesco: URL interno configurabile per il deploy Docker; il default mantiene l'avvio locale corrente.
-    base-url: ${APP_TICKET_BASE_URL:http://localhost:8084/api}
+    base-url: ${APP_TICKET_BASE_URL:http://localhost:8084/api/ticket}
 
 # Proprieta custom per OTP Twilio Verify
 qtm:

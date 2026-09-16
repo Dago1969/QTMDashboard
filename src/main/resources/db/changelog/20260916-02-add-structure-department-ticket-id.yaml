@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260916-02-add-structure-department-ticket-id
+      author: copilot
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - tableExists:
+            tableName: structure_department
+        - not:
+            columnExists:
+              tableName: structure_department
+              columnName: ticket_structure_department_id
+      changes:
+        - addColumn:
+            tableName: structure_department
+            columns:
+              - column:
+                  name: ticket_structure_department_id
+                  type: BIGINT
+      rollback:
+        - dropColumn:
+            tableName: structure_department
+            columnName: ticket_structure_department_id

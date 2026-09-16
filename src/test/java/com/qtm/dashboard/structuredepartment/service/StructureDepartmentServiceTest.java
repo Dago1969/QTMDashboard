@@ -16,10 +16,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -241,6 +243,11 @@ class StructureDepartmentServiceTest {
 
         service.importAssociation(request);
 
-        verify(structureDepartmentRepository).save(any(StructureDepartmentEntity.class));
+        verify(structureDepartmentRepository).save(argThat(entity ->
+                Objects.equals(entity.getTicketStructureDepartmentId(), 7L)
+                        && Objects.equals(entity.getCodiceStruttura(), "H001")
+                        && Objects.equals(entity.getCodiceDisciplina(), "CARD")
+                        && Objects.equals(entity.getReferentsJson(), "[]")
+        ));
     }
 }

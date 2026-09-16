@@ -29,6 +29,9 @@ public class StructureDepartmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "ticket_structure_department_id")
+    private Long ticketStructureDepartmentId;
+
     @Column(name = "codice_struttura", nullable = false, length = 100)
     private String codiceStruttura;
 

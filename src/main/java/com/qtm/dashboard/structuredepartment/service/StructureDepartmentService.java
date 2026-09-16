@@ -143,7 +143,7 @@ public class StructureDepartmentService {
 
         log.info("[StructureDepartmentService] associazione reparto struttura={} disciplina={}", codiceStruttura, codiceDisciplina);
 
-        fetchStructureDepartmentsByStructureCode(codiceStruttura).stream()
+        StructureDepartmentSourceDto sourceDepartment = fetchStructureDepartmentsByStructureCode(codiceStruttura).stream()
                 .filter(row -> Objects.equals(normalizeCode(row.getCodiceDisciplina()), codiceDisciplina))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(
@@ -154,6 +154,7 @@ public class StructureDepartmentService {
         StructureDepartmentEntity entity = structureDepartmentRepository
                 .findByCodiceStrutturaAndCodiceDisciplina(codiceStruttura, codiceDisciplina)
                 .orElseGet(StructureDepartmentEntity::new);
+        entity.setTicketStructureDepartmentId(sourceDepartment.getId());
         entity.setCodiceStruttura(codiceStruttura);
         entity.setCodiceDisciplina(codiceDisciplina);
         entity.setReferentsJson(StringUtils.hasText(entity.getReferentsJson()) ? entity.getReferentsJson() : EMPTY_REFERENTS_JSON);
