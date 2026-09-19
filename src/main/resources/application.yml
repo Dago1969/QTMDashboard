@@ -4,10 +4,18 @@ application:
   version: ${project.version}
 server:
   port: ${SERVER_PORT:8086}
+  tomcat:
+    connection-timeout: ${SERVER_CONNECTION_TIMEOUT:900s}
+  servlet:
+    session:
+      timeout: ${SERVER_SESSION_TIMEOUT:60m}
 
 spring:
   profiles:
     active: ${QTMDB_ENV:sviluppo}
+  mvc:
+    async:
+      request-timeout: ${SPRING_MVC_ASYNC_REQUEST_TIMEOUT:900000}
   sql:
     init:
       #FIXME Francesco dovresti passare per liquibase o avere un altro sistema
@@ -90,6 +98,10 @@ app:
 
 # Proprieta custom per OTP Twilio Verify
 qtm:
+  http:
+    client:
+      connect-timeout: ${QTM_HTTP_CLIENT_CONNECT_TIMEOUT:60s}
+      read-timeout: ${QTM_HTTP_CLIENT_READ_TIMEOUT:900s}
   otp:
     twilio:
       enabled: ${QTM_OTP_TWILIO_ENABLED:true}

@@ -1,4 +1,5 @@
 @import "@ng-select/ng-select/themes/default.theme.css";
+@import "@angular/cdk/overlay-prebuilt.css";
 @import './assets/intl-tel-input/css/intlTelInput.css';
 
 :root {
@@ -237,6 +238,242 @@ body {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.structure-departments-table {
+  width: 100%;
+  background: transparent;
+}
+
+.structure-departments-table .mat-mdc-header-row,
+.structure-departments-table .mat-mdc-row,
+.structure-departments-table .mdc-data-table__content {
+  background: #ffffff;
+}
+
+.structure-departments-table .mat-mdc-header-cell,
+.structure-departments-table .mat-mdc-cell {
+  border-bottom-color: rgba(53, 82, 119, 0.14);
+}
+
+.structure-departments-table .mat-sort-header-content,
+.structure-departments-table .mat-mdc-header-cell {
+  color: var(--TXT);
+  font-family: var(--text-font-family);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.structure-departments-table .mat-mdc-cell {
+  color: var(--TXT);
+  font-family: var(--text-font-family);
+}
+
+.structure-departments-table .mat-column-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.structure-departments-paginator {
+  margin-top: 18px;
+  background: transparent;
+  border-top: 1px solid #edf3f8;
+  padding-top: 14px;
+}
+
+.structure-departments-paginator .mat-mdc-paginator-container {
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 0;
+  min-height: 0;
+  flex-wrap: wrap;
+}
+
+.structure-departments-paginator .mat-mdc-paginator-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 0;
+}
+
+.structure-departments-paginator .mat-mdc-paginator-page-size-label,
+.structure-departments-paginator .mat-mdc-paginator-range-label {
+  margin: 0;
+  color: #5f7596;
+  font-family: var(--text-font-family);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.structure-departments-paginator .mat-mdc-paginator-range-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.structure-departments-paginator .mat-mdc-select {
+  min-width: 86px;
+}
+
+.structure-departments-paginator .mat-mdc-text-field-wrapper {
+  min-height: 36px;
+  border: 1px solid #c7d9ef;
+  border-radius: 999px;
+  background: #f4f9ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.structure-departments-paginator .mat-mdc-form-field-infix {
+  min-height: 36px;
+  width: auto;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.structure-departments-paginator .mat-mdc-select-value,
+.structure-departments-paginator .mat-mdc-select-arrow,
+.structure-departments-paginator .mat-mdc-select-min-line {
+  color: var(--TXT);
+  font-weight: 700;
+}
+
+.structure-departments-paginator .mat-mdc-form-field {
+  width: auto;
+}
+
+.structure-departments-paginator .mat-mdc-form-field-flex,
+.structure-departments-paginator .mat-mdc-select-trigger {
+  align-items: center;
+}
+
+.structure-departments-paginator .mat-mdc-select-trigger {
+  display: inline-flex;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  line-height: 1;
+}
+
+.structure-departments-paginator .mat-mdc-form-field-focus-overlay,
+.structure-departments-paginator .mat-mdc-form-field-subscript-wrapper,
+.structure-departments-paginator .mdc-line-ripple,
+.structure-departments-paginator .mdc-notched-outline {
+  display: none;
+}
+
+.structure-departments-paginator .mat-mdc-form-field:hover .mat-mdc-text-field-wrapper,
+.structure-departments-paginator .mat-mdc-select:focus-within .mat-mdc-text-field-wrapper {
+  border-color: var(--Primary);
+  box-shadow: 0 0 0 3px rgba(24, 112, 232, 0.12);
+}
+
+.structure-departments-paginator .mat-mdc-select-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-left: 0;
+  text-align: center;
+}
+
+.structure-departments-paginator .mat-mdc-select-value-text,
+.structure-departments-paginator .mat-mdc-select-min-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.structure-departments-paginator .mat-mdc-select-arrow-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--TXT);
+}
+
+.structure-departments-paginator .mat-mdc-select-arrow svg {
+  fill: var(--TXT);
+}
+
+.structure-departments-paginator .mat-mdc-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  background: #4c5b8f;
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(76, 91, 143, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.structure-departments-paginator .mat-mdc-icon-button:hover:not([disabled]) {
+  background: #3f4d7e;
+  box-shadow: 0 14px 24px rgba(63, 77, 126, 0.24);
+  transform: translateY(-1px);
+}
+
+.structure-departments-paginator .mat-mdc-icon-button[disabled] {
+  background: #d9e3f4;
+  color: #8ea1bf;
+  box-shadow: none;
+}
+
+.structure-departments-paginator .mat-mdc-icon-button .mat-mdc-paginator-icon {
+  fill: currentColor;
+}
+
+.structure-departments-paginator .mat-mdc-icon-button .mat-mdc-button-touch-target {
+  width: 40px;
+  height: 40px;
+}
+
+.structure-departments-page-size-panel {
+  margin-top: 8px;
+  border: 1px solid #d3e5f8;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 40px rgba(31, 64, 120, 0.16) !important;
+  overflow: hidden !important;
+}
+
+.structure-departments-page-size-panel .mat-mdc-option {
+  min-height: 42px;
+  color: #355277;
+  font-family: var(--text-font-family);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.structure-departments-page-size-panel .mat-mdc-option .mdc-list-item__primary-text {
+  color: inherit;
+  font: inherit;
+}
+
+.structure-departments-page-size-panel .mat-mdc-option:hover,
+.structure-departments-page-size-panel .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+  background: #edf6ff;
+}
+
+.structure-departments-page-size-panel .mat-mdc-option.mdc-list-item--selected .mdc-list-item__primary-text {
+  color: var(--Primary);
+}
+
+@media (max-width: 900px) {
+  .structure-departments-paginator .mat-mdc-paginator-container {
+    justify-content: flex-start;
+    gap: 12px 18px;
+  }
+
+  .structure-departments-paginator .mat-mdc-paginator-range-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 /* --- Typography --- */

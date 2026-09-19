@@ -29,6 +29,10 @@ services:
         condition: service_healthy
     environment:
       QTMDB_ENV: collaudo
+      SERVER_CONNECTION_TIMEOUT: 900s
+      SPRING_MVC_ASYNC_REQUEST_TIMEOUT: 900000
+      QTM_HTTP_CLIENT_CONNECT_TIMEOUT: 60s
+      QTM_HTTP_CLIENT_READ_TIMEOUT: 900s
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/qtmdashboard${APP_KEYCLOAK_REALM_CODE}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: dago

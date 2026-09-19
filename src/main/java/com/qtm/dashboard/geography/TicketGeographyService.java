@@ -40,8 +40,11 @@ public class TicketGeographyService {
     private final Map<String, TicketRegion> regionCache = new ConcurrentHashMap<>();
     private final Map<String, TicketProvince> provinceCache = new ConcurrentHashMap<>();
 
-    public TicketGeographyService(@Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl) {
-        this.restClient = RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build();
+    public TicketGeographyService(
+            RestClient.Builder restClientBuilder,
+            @Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
+    ) {
+        this.restClient = restClientBuilder.baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build();
     }
 
     public Optional<TicketCity> findCityById(Long cityId) {
@@ -75,7 +78,6 @@ public class TicketGeographyService {
                 try {
                     List<TicketRegion> regions = executeListRequest(uriBuilder -> uriBuilder.path("/regions").queryParam("code", rc).build(), REGION_LIST_TYPE);
                     return regions.stream()
-                            .stream()
                             .filter(Objects::nonNull)
                             .filter(region -> rc.equals(region.getRegionCode()))
                             .findFirst()

@@ -87,6 +87,14 @@ interface RegionOption {
               <option *ngFor="let p of provinces" [ngValue]="toSelectValue(p.id)">{{ p.name }}</option>
             </select>
           </label>
+          <label class="asl-filter-field">
+            <span class="asl-filter-label">{{ t('hospital.filter.imported') }}</span>
+            <select class="asl-filter-input" [(ngModel)]="filters.imported">
+              <option value="all">{{ t('hospital.filter.status.all') }}</option>
+              <option value="imported">{{ t('hospital.filter.status.imported') }}</option>
+              <option value="notImported">{{ t('hospital.filter.status.notImported') }}</option>
+            </select>
+          </label>
           <div class="asl-filter-actions">
             <button class="btn btn-primary" type="button" (click)="search()">{{ t('crud.actions.search') }}</button>
             <button class="btn btn-outline" type="button" (click)="resetFilters()">{{ t('crud.actions.reset') }}</button>

@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component } from '@angular/core';
+import { AfterViewInit, Component, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatPaginator, MatPaginatorIntl, MatPaginatorModule } from '@angular/material/paginator';
+import { MatSort, MatSortModule } from '@angular/material/sort';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -46,7 +49,7 @@ interface StructureDepartment {
 @Component({
   selector: 'app-structure-departments-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatTableModule, MatSortModule, MatPaginatorModule],
   template: `
     <div class="card dashboard-content-card">
       <div class="dashboard-header">
@@ -81,6 +84,14 @@ interface StructureDepartment {
               <option *ngFor="let hospital of hospitalOptions" [value]="hospital.code">{{ hospital.label }}</option>
             </select>
           </label>
+          <label class="asl-filter-field">
+            <span class="asl-filter-label">{{ t('hospital.filter.imported') }}</span>
+            <select class="asl-filter-input" [(ngModel)]="filters.imported" (ngModelChange)="onImportedChange()">
+              <option value="all">{{ t('hospital.filter.status.all') }}</option>
+              <option value="imported">{{ t('hospital.filter.status.imported') }}</option>
+              <option value="notImported">{{ t('hospital.filter.status.notImported') }}</option>
+            </select>
+          </label>
         </div>
         <div class="asl-filter-actions">
           <button class="btn btn-primary" type="button" (click)="loadOverview()">{{ t('crud.actions.search') }}</button>
@@ -92,48 +103,131 @@ interface StructureDepartment {
         <div *ngIf="message" class="alert" [class.alert-success]="messageType === 'success'" [class.alert-danger]="messageType === 'error'">{{ message }}</div>
 
         <div class="table-responsive asl-table-wrapper">
-          <table class="search-table asl-search-table">
-            <thead>
-              <tr>
-                <th>{{ t('structureDepartments.column.region') }}</th>
-                <th>{{ t('structureDepartments.column.asl') }}</th>
-                <th>{{ t('structureDepartments.column.hospital') }}</th>
-                <th>{{ t('structureDepartments.column.code') }}</th>
-                <th>{{ t('structureDepartments.column.department') }}</th>
-                <th>{{ t('structureDepartments.column.address') }}</th>
-                <th class="asl-actions-column">{{ t('search.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let row of allRecords; trackBy: trackById">
-                <td>{{ row.regione ? row.regione + ' (' + row.codiceRegione + ')' : (row.codiceRegione || '-') }}</td>
-                <td>{{ row.asl ? row.asl + ' (' + row.codiceAsl + ')' : (row.codiceAsl || '-') }}</td>
-                <td>{{ row.struttura ? row.struttura + ' (' + row.codiceStruttura + ')' : (row.codiceStruttura || '-') }}</td>
-                <td>{{ row.codiceStruttura || '-' }}</td>
-                <td>{{ formatDepartment(row) }}</td>
-                <td>{{ row.indirizzo || '-' }}</td>
-                <td class="asl-actions-cell">
-                  <button *ngIf="!row.imported" class="btn btn-primary btn-sm" type="button" (click)="importRow(row)">{{ t('structureDepartments.action.associate') }}</button>
-                  <button *ngIf="row.imported" class="btn btn-secondary btn-sm" type="button" (click)="remove(row)">{{ t('structureDepartments.action.disassociate') }}</button>
-                </td>
-              </tr>
-              <tr *ngIf="allRecords.length === 0">
-                <td class="asl-empty-cell" colspan="7">{{ t('structureDepartments.search.noResults') }}</td>
-              </tr>
-            </tbody>
+          <table
+            mat-table
+            [dataSource]="dataSource"
+            matSort
+            matSortActive="region"
+            matSortDirection="asc"
+            class="search-table asl-search-table structure-departments-table"
+          >
+            <ng-container matColumnDef="region">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [sortActionDescription]="t('structureDepartments.sort.region')"
+              >
+                {{ t('structureDepartments.column.region') }}
+              </th>
+              <td mat-cell *matCellDef="let row">{{ formatRegion(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="asl">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [sortActionDescription]="t('structureDepartments.sort.asl')"
+              >
+                {{ t('structureDepartments.column.asl') }}
+              </th>
+              <td mat-cell *matCellDef="let row">{{ formatAsl(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="hospital">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [sortActionDescription]="t('structureDepartments.sort.hospital')"
+              >
+                {{ t('structureDepartments.column.hospital') }}
+              </th>
+              <td mat-cell *matCellDef="let row">{{ formatHospital(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="code">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [sortActionDescription]="t('structureDepartments.sort.code')"
+              >
+                {{ t('structureDepartments.column.code') }}
+              </th>
+              <td mat-cell *matCellDef="let row">{{ row.codiceStruttura || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="department">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [sortActionDescription]="t('structureDepartments.sort.department')"
+              >
+                {{ t('structureDepartments.column.department') }}
+              </th>
+              <td mat-cell *matCellDef="let row">{{ formatDepartment(row) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="address">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                mat-sort-header
+                [sortActionDescription]="t('structureDepartments.sort.address')"
+              >
+                {{ t('structureDepartments.column.address') }}
+              </th>
+              <td mat-cell *matCellDef="let row">{{ row.indirizzo || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef class="asl-actions-column">{{ t('search.actions') }}</th>
+              <td mat-cell *matCellDef="let row" class="asl-actions-cell">
+                <button *ngIf="!row.imported" class="btn btn-primary btn-sm" type="button" (click)="importRow(row)">{{ t('structureDepartments.action.associate') }}</button>
+                <button *ngIf="row.imported" class="btn btn-secondary btn-sm" type="button" (click)="remove(row)">{{ t('structureDepartments.action.disassociate') }}</button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns; trackBy: trackById"></tr>
+            <tr class="mat-mdc-row" *matNoDataRow>
+              <td class="asl-empty-cell" [attr.colspan]="displayedColumns.length">{{ t('structureDepartments.search.noResults') }}</td>
+            </tr>
           </table>
+
+          <mat-paginator
+            class="structure-departments-paginator"
+            [pageSize]="pageSize"
+            [pageSizeOptions]="pageSizeOptions"
+            [selectConfig]="paginatorSelectConfig"
+            showFirstLastButtons
+            [attr.aria-label]="t('structureDepartments.pagination.aria')"
+          ></mat-paginator>
         </div>
       </section>
     </div>
   `
 })
-export class StructureDepartmentsManagementComponent {
+export class StructureDepartmentsManagementComponent implements AfterViewInit {
+  @ViewChild(MatSort) sort?: MatSort;
+  @ViewChild(MatPaginator) paginator?: MatPaginator;
+
+  readonly displayedColumns: string[] = ['region', 'asl', 'hospital', 'code', 'department', 'address', 'actions'];
+  readonly pageSizeOptions: number[] = [10, 25, 50, 100];
+  readonly pageSize = 10;
+  readonly paginatorSelectConfig = { panelClass: 'structure-departments-page-size-panel' };
+
   filters = {
     regionCode: '',
     aslCode: '',
-    hospitalCode: ''
+    hospitalCode: '',
+    imported: 'all' as 'all' | 'imported' | 'notImported'
   };
   allRecords: StructureDepartment[] = [];
+  dataSource = new MatTableDataSource<StructureDepartment>([]);
   allRegionOptions: FilterOption[] = [];
   allAslOptions: FilterOption[] = [];
   allHospitalOptions: FilterOption[] = [];
@@ -145,7 +239,11 @@ export class StructureDepartmentsManagementComponent {
   message = '';
   messageType: 'success' | 'error' = 'success';
 
-  constructor(private readonly http: HttpClient, private readonly i18n: I18nPropertiesService) {
+  constructor(
+    private readonly http: HttpClient,
+    private readonly i18n: I18nPropertiesService,
+    private readonly paginatorIntl: MatPaginatorIntl
+  ) {
     forkJoin({
       translations: this.i18n.loadTranslations(navigator.language),
       disciplines: this.http
@@ -153,6 +251,7 @@ export class StructureDepartmentsManagementComponent {
         .pipe(catchError(() => of([] as DisciplineOption[])))
     }).subscribe(({ translations, disciplines }) => {
       this.translations = translations;
+      this.configurePaginatorIntl();
       this.disciplineLabels = disciplines.reduce<Record<string, string>>((labels, discipline) => {
         if (discipline.codice && discipline.disciplina) {
           labels[discipline.codice] = discipline.disciplina;
@@ -161,6 +260,12 @@ export class StructureDepartmentsManagementComponent {
       }, {});
       this.loadFilterOptions();
     });
+  }
+
+  ngAfterViewInit(): void {
+    this.dataSource.sort = this.sort ?? null;
+    this.dataSource.paginator = this.paginator ?? null;
+    this.dataSource.sortingDataAccessor = (row, column) => this.getSortValue(row, column);
   }
 
   t(key: string): string {
@@ -192,11 +297,16 @@ export class StructureDepartmentsManagementComponent {
     this.loadOverview();
   }
 
+  onImportedChange(): void {
+    this.loadOverview();
+  }
+
   resetFilters(): void {
     this.filters = {
       regionCode: '',
       aslCode: '',
-      hospitalCode: ''
+      hospitalCode: '',
+      imported: 'all'
     };
     this.refreshAvailableOptions();
     this.loadOverview();
@@ -250,6 +360,18 @@ export class StructureDepartmentsManagementComponent {
     return disciplineLabel || disciplineCode || '-';
   }
 
+  formatRegion(row: StructureDepartment): string {
+    return row.regione ? `${row.regione} (${row.codiceRegione})` : (row.codiceRegione || '-');
+  }
+
+  formatAsl(row: StructureDepartment): string {
+    return row.asl ? `${row.asl} (${row.codiceAsl})` : (row.codiceAsl || '-');
+  }
+
+  formatHospital(row: StructureDepartment): string {
+    return row.struttura ? `${row.struttura} (${row.codiceStruttura})` : (row.codiceStruttura || '-');
+  }
+
   loadOverview(): void {
     const params: Record<string, string> = {};
     if (this.filters.regionCode) {
@@ -263,11 +385,25 @@ export class StructureDepartmentsManagementComponent {
     }
     this.http.get<StructureDepartment[]>(`${environment.apiBaseUrl}/structure-departments/overview`, { params }).subscribe({
       next: (data) => {
-        this.allRecords = data;
+        this.allRecords = this.applyImportedFilter(data ?? []);
+        this.dataSource.data = this.allRecords;
+        if (this.paginator) {
+          this.paginator.firstPage();
+        }
         this.showMessage('', 'success');
       },
       error: (error: { error?: ProblemDetailPayload }) => this.showErrorMessage(error, 'structureDepartments.messages.loadError')
     });
+  }
+
+  private applyImportedFilter(records: StructureDepartment[]): StructureDepartment[] {
+    if (this.filters.imported === 'imported') {
+      return records.filter((record) => record.imported);
+    }
+    if (this.filters.imported === 'notImported') {
+      return records.filter((record) => !record.imported);
+    }
+    return records;
   }
 
   private loadFilterOptions(): void {
@@ -372,6 +508,46 @@ export class StructureDepartmentsManagementComponent {
   private normalizeValue(value?: string): string | undefined {
     const normalizedValue = value?.trim();
     return normalizedValue ? normalizedValue : undefined;
+  }
+
+  private getSortValue(row: StructureDepartment, column: string): string {
+    switch (column) {
+      case 'region':
+        return this.normalizeSortValue(this.formatRegion(row));
+      case 'asl':
+        return this.normalizeSortValue(this.formatAsl(row));
+      case 'hospital':
+        return this.normalizeSortValue(this.formatHospital(row));
+      case 'code':
+        return this.normalizeSortValue(row.codiceStruttura);
+      case 'department':
+        return this.normalizeSortValue(this.formatDepartment(row));
+      case 'address':
+        return this.normalizeSortValue(row.indirizzo);
+      default:
+        return '';
+    }
+  }
+
+  private normalizeSortValue(value?: string): string {
+    return value?.trim().toLocaleLowerCase() ?? '';
+  }
+
+  private configurePaginatorIntl(): void {
+    this.paginatorIntl.itemsPerPageLabel = this.t('structureDepartments.pagination.itemsPerPage');
+    this.paginatorIntl.nextPageLabel = this.t('structureDepartments.pagination.nextPage');
+    this.paginatorIntl.previousPageLabel = this.t('structureDepartments.pagination.previousPage');
+    this.paginatorIntl.firstPageLabel = this.t('structureDepartments.pagination.firstPage');
+    this.paginatorIntl.lastPageLabel = this.t('structureDepartments.pagination.lastPage');
+    this.paginatorIntl.getRangeLabel = (page: number, pageSize: number, length: number): string => {
+      if (length === 0 || pageSize === 0) {
+        return `0 ${this.t('structureDepartments.pagination.of')} ${length}`;
+      }
+      const startIndex = page * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, length);
+      return `${startIndex + 1} - ${endIndex} ${this.t('structureDepartments.pagination.of')} ${length}`;
+    };
+    this.paginatorIntl.changes.next();
   }
 
   private showErrorMessage(error: { error?: ProblemDetailPayload }, fallbackKey: string): void {
