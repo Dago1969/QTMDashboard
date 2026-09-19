@@ -446,7 +446,7 @@ export class HospitalManagementComponent implements OnInit {
 
   // Load regions from Ticket service for filters (keeps parity with ASL management)
   private loadRegions(): void {
-    this.http.get<Array<{ id: number; name: string; regionCode?: string; code?: string }>>(`${environment.ticketApiBaseUrl}/regions`).subscribe({
+    this.http.get<Array<{ id: number; name: string; regionCode?: string; code?: string }>>(`${environment.apiBaseUrl}/geography/regions`).subscribe({
       next: (regions) => {
         this.regionsRaw = regions ?? [];
         this.regionOptions = (regions ?? []).map(r => ({ code: String(r.regionCode ?? r.code ?? r.id).padStart(2, '0'), label: r.name }));
@@ -470,7 +470,7 @@ export class HospitalManagementComponent implements OnInit {
   }
 
   private loadProvinces(): void {
-    this.http.get<Array<{ id: number; name: string; sigla?: string; code?: string; regionId?: number }>>(`${environment.ticketApiBaseUrl}/provinces`).subscribe({
+    this.http.get<Array<{ id: number; name: string; sigla?: string; code?: string; regionId?: number }>>(`${environment.apiBaseUrl}/geography/provinces`).subscribe({
       next: (provs) => {
         this.provinces = provs ?? [];
         this.provinceOptions = (this.provinces ?? []).map(p => ({

@@ -745,7 +745,7 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
 
   private loadRegions(): void {
     this.subscriptions.add(
-      this.http.get<GeographicOption[]>(`${environment.ticketApiBaseUrl}/regions`).subscribe({
+      this.http.get<GeographicOption[]>(`${environment.apiBaseUrl}/geography/regions`).subscribe({
         next: (regions) => this.regions = regions,
         error: (error: HttpErrorResponse) => {
           this.messageType = 'error';
@@ -757,7 +757,7 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
 
   private loadProvinces(regionId: number): void {
     this.subscriptions.add(
-      this.http.get<GeographicOption[]>(`${environment.ticketApiBaseUrl}/provinces/by-region/${regionId}`).subscribe({
+      this.http.get<GeographicOption[]>(`${environment.apiBaseUrl}/geography/provinces/by-region/${regionId}`).subscribe({
         next: (provinces) => this.provinces = provinces,
         error: (error: HttpErrorResponse) => {
           this.messageType = 'error';
@@ -769,7 +769,7 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
 
   private loadCities(provinceId: number): void {
     this.subscriptions.add(
-      this.http.get<GeographicOption[]>(`${environment.ticketApiBaseUrl}/cities/by-province/${provinceId}`).subscribe({
+      this.http.get<GeographicOption[]>(`${environment.apiBaseUrl}/geography/cities/by-province/${provinceId}`).subscribe({
         next: (cities) => this.cities = cities,
         error: (error: HttpErrorResponse) => {
           this.messageType = 'error';

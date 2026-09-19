@@ -363,7 +363,7 @@ export class AslManagementComponent implements OnInit {
 
   // region/province helpers
   private loadRegions(): void {
-    this.http.get<RegionOption[]>(`${environment.ticketApiBaseUrl}/regions`).subscribe({
+    this.http.get<RegionOption[]>(`${environment.apiBaseUrl}/geography/regions`).subscribe({
       next: (regions) => {
         this.regions = (regions ?? []).map((region) => ({
           ...region,
@@ -377,7 +377,7 @@ export class AslManagementComponent implements OnInit {
   }
 
   private loadProvinces(regionId: number): void {
-    this.http.get<Array<{ id: number; name: string }>>(`${environment.ticketApiBaseUrl}/provinces/by-region/${regionId}`).subscribe({
+    this.http.get<Array<{ id: number; name: string }>>(`${environment.apiBaseUrl}/geography/provinces/by-region/${regionId}`).subscribe({
       next: (provinces) => (this.provinces = provinces),
       error: () => {
         // ignore silently
@@ -397,7 +397,7 @@ export class AslManagementComponent implements OnInit {
 
     missingIds.forEach((pid) => {
       // fetch province details and apply to records and select list
-      this.http.get<{ id: number; name: string }>(`${environment.ticketApiBaseUrl}/provinces/${pid}`).subscribe({
+      this.http.get<{ id: number; name: string }>(`${environment.apiBaseUrl}/geography/provinces/${pid}`).subscribe({
         next: (prov) => {
           if (!prov) return;
           // add to provinces list if not present
