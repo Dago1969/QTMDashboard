@@ -5,6 +5,7 @@
   "scripts": {
     "start": "ng serve",
     "build": "ng build --configuration production",
+    "build:prod": "ng build --configuration production && node ./scripts/generate-env.js",
     "test": "ng test"
   },
   "dependencies": {
