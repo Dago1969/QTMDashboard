@@ -172,6 +172,68 @@ class StructureDepartmentServiceTest {
         verify(restClient).get();
     }
 
+    /**
+     * Verifica che la denominazione ASL sia risolta con regione e codice azienda quando il codice è duplicato.
+     */
+    @Test
+    void findAllWithImportStatusShouldResolveAslByRegionAndCompanyCode() {
+        StructureDepartmentService service = new StructureDepartmentService(
+                aslRepository,
+                hospitalRepository,
+                structureDepartmentRepository,
+                restClient,
+                apiRootRestClient,
+                "http://ticket.test"
+        );
+
+        StructureDepartmentSourceDto sourceDepartment = StructureDepartmentSourceDto.builder()
+                .id(9L)
+                .codiceStruttura("090623")
+                .codiceDisciplina("CARD")
+                .build();
+
+        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
+        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
+        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+                RegionDto.builder().code("09").name("Toscana").build()
+        });
+        doReturn(requestHeadersUriSpec).when(restClient).get();
+        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("structure-departments?codiceStruttura={codiceStruttura}", "090623");
+        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(StructureDepartmentSourceDto[].class)).thenReturn(new StructureDepartmentSourceDto[]{sourceDepartment});
+
+        when(aslRepository.findAll()).thenReturn(List.of(
+                ASLEntity.builder()
+                        .id(105L)
+                        .codiceAzienda("203")
+                        .denominazioneAzienda("ASL PESCARA")
+                        .codiceRegione("13")
+                        .build(),
+                ASLEntity.builder()
+                        .id(923L)
+                        .codiceAzienda("203")
+                        .denominazioneAzienda("AZIENDA USL TOSCANA SUD-EST")
+                        .codiceRegione("09")
+                        .build()
+        ));
+        when(hospitalRepository.findAll()).thenReturn(List.of(HospitalEntity.builder()
+                .id(191L)
+                .codiceRegione("09")
+                .codiceAsl("203")
+                .codiceStruttura("090623")
+                .struttura("OSPEDALE S.ANDREA MASSA MARITTIMA")
+                .build()));
+        when(structureDepartmentRepository.findAll()).thenReturn(List.of());
+
+        var overview = service.findAllWithImportStatus("09", "203", "090623");
+
+        assertThat(overview).hasSize(1);
+        assertThat(overview.get(0).getCodiceRegione()).isEqualTo("09");
+        assertThat(overview.get(0).getCodiceAsl()).isEqualTo("203");
+        assertThat(overview.get(0).getAsl()).isEqualTo("AZIENDA USL TOSCANA SUD-EST");
+    }
+
     @Test
     void getFilterOptionsShouldExposeHospitalsFromHospitalTable() {
         StructureDepartmentService service = new StructureDepartmentService(

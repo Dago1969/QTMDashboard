@@ -98,9 +98,13 @@ public class StructureDepartmentService {
 
         Map<String, RegionDto> regionsByCode = loadRegionsByCode();
         List<ASLEntity> asls = aslRepository.findAll();
-        Map<String, ASLEntity> aslsByCode = asls.stream()
-            .filter(asl -> StringUtils.hasText(asl.getCodiceAzienda()))
-            .collect(Collectors.toMap(asl -> normalizeCode(asl.getCodiceAzienda()), Function.identity(), (first, second) -> first));
+        Map<String, ASLEntity> aslsByRegionAndCode = asls.stream()
+            .filter(asl -> StringUtils.hasText(asl.getCodiceRegione()) && StringUtils.hasText(asl.getCodiceAzienda()))
+            .collect(Collectors.toMap(
+                asl -> buildAslKey(asl.getCodiceRegione(), asl.getCodiceAzienda()),
+                Function.identity(),
+                (first, second) -> first
+            ));
         Map<Long, ASLEntity> aslsById = loadAslsById(asls);
         Map<String, HospitalEntity> hospitalsByStructureCode = loadHospitalsByStructureCode();
         log.info("[StructureDepartmentService] normalized filters regionKey={} aslKey={} structureKey={}",
@@ -125,7 +129,7 @@ public class StructureDepartmentService {
                 .toList());
 
         List<StructureDepartmentOverviewDto> overview = ticketDepartments.stream()
-            .map(sourceDepartment -> toOverview(sourceDepartment, regionsByCode, aslsByCode, aslsById, hospitalsByStructureCode, localAssociationsByKey))
+            .map(sourceDepartment -> toOverview(sourceDepartment, regionsByCode, aslsByRegionAndCode, aslsById, hospitalsByStructureCode, localAssociationsByKey))
             .toList();
         log.info("[StructureDepartmentService] enriched overview rows={} importedKeys={}",
             overview.size(),
@@ -179,7 +183,7 @@ public class StructureDepartmentService {
     private StructureDepartmentOverviewDto toOverview(
             StructureDepartmentSourceDto sourceDepartment,
             Map<String, RegionDto> regionsByCode,
-            Map<String, ASLEntity> aslsByCode,
+            Map<String, ASLEntity> aslsByRegionAndCode,
             Map<Long, ASLEntity> aslsById,
             Map<String, HospitalEntity> hospitalsByStructureCode,
             Map<String, StructureDepartmentEntity> localAssociationsByKey
@@ -187,8 +191,8 @@ public class StructureDepartmentService {
         String normalizedStructureCode = normalizeCode(sourceDepartment.getCodiceStruttura());
         HospitalEntity hospital = hospitalsByStructureCode.get(normalizedStructureCode);
         String resolvedAslCode = resolveHospitalAslCode(hospital, aslsById);
-        ASLEntity asl = resolvedAslCode != null ? aslsByCode.get(normalizeCode(resolvedAslCode)) : null;
         String effectiveRegionCode = resolveHospitalRegionCode(hospital, aslsById);
+        ASLEntity asl = aslsByRegionAndCode.get(buildAslKey(effectiveRegionCode, resolvedAslCode));
         RegionDto region = regionsByCode.get(normalizeCode(effectiveRegionCode));
         String associationKey = buildAssociationKey(sourceDepartment.getCodiceStruttura(), sourceDepartment.getCodiceDisciplina());
 
@@ -439,6 +443,13 @@ public class StructureDepartmentService {
 
     private String buildAssociationKey(String codiceStruttura, String codiceDisciplina) {
         return normalizeCode(codiceStruttura) + "||" + normalizeCode(codiceDisciplina);
+    }
+
+    /**
+     * Identifica univocamente un'ASL perché il codice azienda può ripetersi tra regioni diverse.
+     */
+    private String buildAslKey(String codiceRegione, String codiceAzienda) {
+        return normalizeCode(codiceRegione) + "||" + normalizeCode(codiceAzienda);
     }
 
     private static String deriveTicketApiRootUrl(String ticketBaseUrl) {

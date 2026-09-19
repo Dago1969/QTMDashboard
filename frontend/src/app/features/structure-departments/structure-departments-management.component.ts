@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MatPaginator, MatPaginatorIntl, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { Select2 } from 'ng-select2-component';
 import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -46,10 +47,20 @@ interface StructureDepartment {
   imported: boolean;
 }
 
+interface Select2Option {
+  value: string;
+  label: string;
+  id: string;
+}
+
+interface Select2UpdatePayload {
+  value: unknown;
+}
+
 @Component({
   selector: 'app-structure-departments-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatTableModule, MatSortModule, MatPaginatorModule],
+  imports: [CommonModule, FormsModule, MatTableModule, MatSortModule, MatPaginatorModule, Select2],
   template: `
     <div class="card dashboard-content-card">
       <div class="dashboard-header">
@@ -63,27 +74,45 @@ interface StructureDepartment {
 
       <section class="search-filters-panel">
         <div class="asl-filters-grid hospital-filters-grid">
-          <label class="asl-filter-field">
+          <div class="asl-filter-field">
             <span class="asl-filter-label">{{ t('structureDepartments.filter.regionCode') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.regionCode" (ngModelChange)="onRegionChange()">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let region of regionOptions" [value]="region.code">{{ region.label }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
+            <ng-select2
+              class="qtm-select2-field"
+              [(ngModel)]="filters.regionCode"
+              name="regionCode"
+              [data]="regionSelect2Data"
+              [placeholder]="t('crud.select.all')"
+              [displaySearchStatus]="'always'"
+              [resettable]="true"
+              (update)="onRegionUpdate($event)"
+            ></ng-select2>
+          </div>
+          <div class="asl-filter-field">
             <span class="asl-filter-label">{{ t('structureDepartments.filter.aslCode') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.aslCode" (ngModelChange)="onAslChange()">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let asl of aslOptions" [value]="asl.code">{{ asl.label }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field asl-filter-field-wide">
+            <ng-select2
+              class="qtm-select2-field"
+              [(ngModel)]="filters.aslCode"
+              name="aslCode"
+              [data]="aslSelect2Data"
+              [placeholder]="t('crud.select.all')"
+              [displaySearchStatus]="'always'"
+              [resettable]="true"
+              (update)="onAslUpdate($event)"
+            ></ng-select2>
+          </div>
+          <div class="asl-filter-field asl-filter-field-wide">
             <span class="asl-filter-label">{{ t('structureDepartments.filter.hospital') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.hospitalCode" (ngModelChange)="onHospitalChange()">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let hospital of hospitalOptions" [value]="hospital.code">{{ hospital.label }}</option>
-            </select>
-          </label>
+            <ng-select2
+              class="qtm-select2-field"
+              [(ngModel)]="filters.hospitalCode"
+              name="hospitalCode"
+              [data]="hospitalSelect2Data"
+              [placeholder]="t('crud.select.all')"
+              [displaySearchStatus]="'always'"
+              [resettable]="true"
+              (update)="onHospitalUpdate($event)"
+            ></ng-select2>
+          </div>
           <label class="asl-filter-field">
             <span class="asl-filter-label">{{ t('hospital.filter.imported') }}</span>
             <select class="asl-filter-input" [(ngModel)]="filters.imported" (ngModelChange)="onImportedChange()">
@@ -234,6 +263,9 @@ export class StructureDepartmentsManagementComponent implements AfterViewInit {
   regionOptions: FilterOption[] = [];
   aslOptions: FilterOption[] = [];
   hospitalOptions: FilterOption[] = [];
+  regionSelect2Data: Select2Option[] = [];
+  aslSelect2Data: Select2Option[] = [];
+  hospitalSelect2Data: Select2Option[] = [];
   disciplineLabels: Record<string, string> = {};
   translations: Record<string, string> = {};
   message = '';
@@ -282,7 +314,13 @@ export class StructureDepartmentsManagementComponent implements AfterViewInit {
     if (this.filters.hospitalCode && !this.hospitalOptions.some((option) => option.code === this.filters.hospitalCode)) {
       this.filters.hospitalCode = '';
     }
+    this.refreshDependentSelect2Data();
     this.loadOverview();
+  }
+
+  onRegionUpdate(event: Select2UpdatePayload): void {
+    this.filters.regionCode = this.normalizeRegionCode(this.extractSingleValue(event.value)) ?? '';
+    this.onRegionChange();
   }
 
   onAslChange(): void {
@@ -290,15 +328,30 @@ export class StructureDepartmentsManagementComponent implements AfterViewInit {
     if (this.filters.hospitalCode && !this.hospitalOptions.some((option) => option.code === this.filters.hospitalCode)) {
       this.filters.hospitalCode = '';
     }
+    this.hospitalSelect2Data = this.toSelect2Data(this.hospitalOptions, this.t('crud.select.all'));
     this.loadOverview();
+  }
+
+  onAslUpdate(event: Select2UpdatePayload): void {
+    this.filters.aslCode = this.normalizeValue(this.extractSingleValue(event.value)) ?? '';
+    this.onAslChange();
   }
 
   onHospitalChange(): void {
     this.loadOverview();
   }
 
+  onHospitalUpdate(event: Select2UpdatePayload): void {
+    this.filters.hospitalCode = this.normalizeValue(this.extractSingleValue(event.value)) ?? '';
+    this.onHospitalChange();
+  }
+
   onImportedChange(): void {
     this.loadOverview();
+  }
+
+  toSelect2Data(options: FilterOption[], allLabel: string): Select2Option[] {
+    return [{ value: '', label: allLabel, id: '' }, ...options.map((option) => ({ value: String(option.code), label: option.label, id: String(option.code) }))];
   }
 
   resetFilters(): void {
@@ -424,7 +477,7 @@ export class StructureDepartmentsManagementComponent implements AfterViewInit {
         const normalizedOthersRegions = (others.regions || []).map((option) => this.normalizeRegionOption(option));
         this.allRegionOptions = this.uniqueOptions(normalizedMapped.concat(normalizedOthersRegions));
         // normalize ASL and hospital options (dependent) so codes/regionCodes are comparable
-        this.allAslOptions = this.uniqueOptions((others.asls || []).map((option) => this.normalizeDependentOption(option)));
+        this.allAslOptions = this.uniqueAslOptions((others.asls || []).map((option) => this.normalizeDependentOption(option)));
         this.allHospitalOptions = this.uniqueOptions((others.hospitals || []).map((option) => this.normalizeDependentOption(option)));
         this.refreshAvailableOptions();
         this.loadOverview();
@@ -437,6 +490,19 @@ export class StructureDepartmentsManagementComponent implements AfterViewInit {
     this.regionOptions = this.allRegionOptions;
     this.aslOptions = this.getAvailableAslOptions();
     this.hospitalOptions = this.getAvailableHospitalOptions();
+    this.refreshSelect2Data();
+  }
+
+  private refreshSelect2Data(): void {
+    const allLabel = this.t('crud.select.all');
+    this.regionSelect2Data = this.toSelect2Data(this.regionOptions, allLabel);
+    this.refreshDependentSelect2Data();
+  }
+
+  private refreshDependentSelect2Data(): void {
+    const allLabel = this.t('crud.select.all');
+    this.aslSelect2Data = this.toSelect2Data(this.aslOptions, allLabel);
+    this.hospitalSelect2Data = this.toSelect2Data(this.hospitalOptions, allLabel);
   }
 
   private getAvailableAslOptions(): FilterOption[] {
@@ -467,6 +533,18 @@ export class StructureDepartmentsManagementComponent implements AfterViewInit {
   private uniqueOptions(options: FilterOption[]): FilterOption[] {
     return options
       .filter((option, index, source) => !!option.code && source.findIndex((candidate) => candidate.code === option.code) === index)
+      .sort((first, second) => first.label.localeCompare(second.label));
+  }
+
+  private uniqueAslOptions(options: FilterOption[]): FilterOption[] {
+    return options
+      .filter(
+        (option, index, source) =>
+          !!option.code &&
+          source.findIndex(
+            (candidate) => candidate.code === option.code && candidate.regionCode === option.regionCode
+          ) === index
+      )
       .sort((first, second) => first.label.localeCompare(second.label));
   }
 
@@ -508,6 +586,14 @@ export class StructureDepartmentsManagementComponent implements AfterViewInit {
   private normalizeValue(value?: string): string | undefined {
     const normalizedValue = value?.trim();
     return normalizedValue ? normalizedValue : undefined;
+  }
+
+  private extractSingleValue(value: unknown): string {
+    if (Array.isArray(value)) {
+      const first = value[0];
+      return first === null || first === undefined ? '' : String(first);
+    }
+    return value === null || value === undefined ? '' : String(value);
   }
 
   private getSortValue(row: StructureDepartment, column: string): string {
