@@ -107,7 +107,7 @@ public class PatientEntity {
     private String therapyStatus;
 
     @Column(name = "prescribing_specialist")
-    private String prescribingSpecialist;
+    private Long prescribingSpecialist;
 
     @Column(name = "reference_hospital_structure")
     private String referenceHospitalStructure;
@@ -135,4 +135,7 @@ public class PatientEntity {
 
     @Column(name = "structure_id")
     private Long structureId;
+
+    @Column(name = "department_id")
+    private Long departmentId;
 }

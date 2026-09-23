@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20261002-01-add-patient-department
+      author: copilot
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: patients
+          - not:
+              columnExists:
+                tableName: patients
+                columnName: department_id
+      changes:
+        - addColumn:
+            tableName: patients
+            columns:
+              - column:
+                  name: department_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+        - addForeignKeyConstraint:
+            baseTableName: patients
+            baseColumnNames: department_id
+            referencedTableName: structure_department
+            referencedColumnNames: id
+            constraintName: fk_patients_department
+            deferrable: false
+            initiallyDeferred: false
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: patients
+            constraintName: fk_patients_department
+        - dropColumn:
+            columnName: department_id
+            tableName: patients

@@ -37,6 +37,7 @@ public class PatientMapper {
         entity.setReferenceHospitalStructure(dto.getReferenceHospitalStructure());
         entity.setReferencePharmacy(dto.getReferencePharmacy());
         entity.setPreferredPickupPharmacy(dto.getPreferredPickupPharmacy());
+        entity.setDepartmentId(dto.getDepartmentId());
         entity.setDeliveryMode(dto.getDeliveryMode());
         entity.setReminderEnabled(dto.getReminderEnabled());
         entity.setCaregiverFullName(dto.getCaregiverFullName());
@@ -77,6 +78,7 @@ public class PatientMapper {
         dto.setReferenceHospitalStructure(entity.getReferenceHospitalStructure());
         dto.setReferencePharmacy(entity.getReferencePharmacy());
         dto.setPreferredPickupPharmacy(entity.getPreferredPickupPharmacy());
+        dto.setDepartmentId(entity.getDepartmentId());
         dto.setDeliveryMode(entity.getDeliveryMode());
         dto.setReminderEnabled(entity.getReminderEnabled());
         dto.setCaregiverFullName(entity.getCaregiverFullName());
