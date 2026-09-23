@@ -112,7 +112,7 @@ interface ConsentOtpState {
         </button>
       </div>
 
-      <form class="form-grid" (ngSubmit)="save()">
+      <form class="form-grid" (ngSubmit)="$event.preventDefault()">
         <ng-container *ngFor="let field of activeFields; let i = index">
           <label
             *ngIf="!(field.key === 'province' && i > 0 && activeFields[i-1]?.key === 'region') && !(field.key === 'city' && i > 0 && activeFields[i-1]?.key === 'province' && i > 1 && activeFields[i-2]?.key === 'region')"
@@ -123,10 +123,10 @@ interface ConsentOtpState {
             <ng-container *ngIf="field.key === 'region'; else normalField">
               <div class="location-row">
                 <div class="location-item">
-                  <ng-select2 class="qtm-select2-field" [(ngModel)]="model.region" name="region" [data]="toSelect2DataFromText(model.region)" [placeholder]="t('patients.field.region')" [displaySearchStatus]="'hidden'" [resettable]="true"></ng-select2>
+                  <ng-select2 class="qtm-select2-field" [(ngModel)]="model.region" name="region" [data]="toSelect2DataFromText(model.region)" [placeholder]="t('patients.field.region')" [displaySearchStatus]="'hidden'" [resettable]="true" (ngModelChange)="onRegionChange($event)"></ng-select2>
                 </div>
                 <div class="location-item">
-                  <ng-select2 class="qtm-select2-field" [(ngModel)]="model.province" name="province" [data]="toSelect2DataFromText(model.province)" [placeholder]="t('patients.field.province')" [displaySearchStatus]="'hidden'" [resettable]="true"></ng-select2>
+                  <ng-select2 class="qtm-select2-field" [(ngModel)]="model.province" name="province" [data]="toSelect2DataFromText(model.province)" [placeholder]="t('patients.field.province')" [displaySearchStatus]="'hidden'" [resettable]="true" (ngModelChange)="onProvinceChange($event)"></ng-select2>
                 </div>
                 <div class="location-item">
                   <ng-select2 class="qtm-select2-field" [(ngModel)]="model.city" name="city" [data]="toSelect2DataFromText(model.city)" [placeholder]="t('patients.field.city')" [displaySearchStatus]="'hidden'" [resettable]="true"></ng-select2>
@@ -186,6 +186,10 @@ interface ConsentOtpState {
             <input
               class="otp-code-input"
               type="text"
+              inputmode="numeric"
+              maxlength="6"
+              (keypress)="onlyNumbers($event)"
+              (input)="onOtpInput($event)"
               [(ngModel)]="model.patientConsentOtpCode"
               name="patientConsentOtpCode"
               [disabled]="consentOtpState.pending || !consentOtpState.sent"
@@ -298,6 +302,27 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
   private phoneInputChangesSubscription?: Subscription;
   private phoneInputBindings = new Map<keyof PatientFormModel, PhoneInputBinding>();
 
+  onlyNumbers(event: KeyboardEvent): boolean {
+    const charCode = event instanceof KeyboardEvent && (event.which ?? event.keyCode);
+    if (!charCode) {
+      return true;
+    }
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      event.preventDefault();
+      return false;
+    }
+    return true;
+  }
+
+  onOtpInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const cleaned = (input.value ?? '').replace(/[^0-9]/g, '').slice(0, 6);
+    if (input.value !== cleaned) {
+      input.value = cleaned;
+      this.model.patientConsentOtpCode = cleaned;
+    }
+  }
+
   constructor(
     private readonly http: HttpClient,
     private readonly route: ActivatedRoute,
@@ -348,6 +373,22 @@ export class PatientsCrudComponent implements OnInit, AfterViewInit, OnDestroy {
       binding.cleanup();
     }
     this.phoneInputBindings.clear();
+  }
+
+  onRegionChange(value: string | null): void {
+    this.model.region = value ?? '';
+    // Asynchronously load provinces for the selected region
+    // (Implementation: call backend if available; here we simply clear city selection)
+    this.model.province = '';
+    this.model.city = '';
+    // TODO: call service to populate provinces options if available
+  }
+
+  onProvinceChange(value: string | null): void {
+    this.model.province = value ?? '';
+    // Asynchronously load cities for selected province
+    this.model.city = '';
+    // TODO: call service to populate city options if available
   }
 
   get activeFields(): FormField[] {

@@ -215,6 +215,10 @@ interface ConsentOtpState {
           <input
             class="otp-code-input"
             type="text"
+            inputmode="numeric"
+            maxlength="6"
+            (keypress)="onlyNumbers($event)"
+            (input)="onOtpInput($event)"
             [(ngModel)]="model.patientConsentOtpCode"
             name="patientConsentOtpCode"
             [disabled]="consentOtpState.pending || !consentOtpState.sent"
@@ -347,6 +351,27 @@ export class PatientsWizardComponent implements OnInit, AfterViewInit, OnDestroy
   private phoneInputBindings = new Map<keyof PatientFormModel, PhoneInputBinding>();
 
   private readonly subscriptions = new Subscription();
+
+  onlyNumbers(event: KeyboardEvent): boolean {
+    const charCode = event instanceof KeyboardEvent && (event.which ?? event.keyCode);
+    if (!charCode) {
+      return true;
+    }
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      event.preventDefault();
+      return false;
+    }
+    return true;
+  }
+
+  onOtpInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const cleaned = (input.value ?? '').replace(/[^0-9]/g, '').slice(0, 6);
+    if (input.value !== cleaned) {
+      input.value = cleaned;
+      this.model.patientConsentOtpCode = cleaned;
+    }
+  }
 
   toSelect2Data(items: GeographicOption[]): Array<{ value: string; label: string; id: string }> {
     return items.map(i => ({ value: String(i.id), label: i.name, id: String(i.id) }));

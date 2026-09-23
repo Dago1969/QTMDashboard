@@ -10,7 +10,12 @@
 
       <label for="password">{{ t('login.label.password') }}</label>
 
-      <input id="password" type="password" formControlName="password" autocomplete="current-password" />
+      <div class="password-field">
+        <input id="password" [type]="passwordVisible ? 'text' : 'password'" formControlName="password" autocomplete="current-password" />
+        <button type="button" class="password-toggle" (click)="togglePasswordVisibility()" [attr.aria-label]="passwordVisible ? t('login.action.hidePassword') : t('login.action.showPassword')">
+          <span class="icon material-icons">{{ passwordVisible ? 'visibility_off' : 'visibility' }}</span>
+        </button>
+      </div>
 
       <div class="login-link-recover">
         <a routerLink="/passwordrecover" class="link-recover">{{ t('login.link.recover') }}</a>
@@ -23,8 +28,6 @@
 
     <p class="info" *ngIf="infoMessage">{{ infoMessage }}</p>
     <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
-    <div class="text-desc">
-      {{ t('login.text.description') }}
-    </div>
+    <!-- Description removed as requested -->
   </div>
 </div>

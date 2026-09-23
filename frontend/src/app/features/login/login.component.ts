@@ -23,6 +23,7 @@ export class LoginComponent implements OnInit {
   infoMessage = '';
   translations: Record<string, string> = {};
   decodedClaims: Record<string, unknown> | null = null;
+  passwordVisible = false;
   readonly loginForm;
 
   constructor(
@@ -36,6 +37,10 @@ export class LoginComponent implements OnInit {
       username: ['francesco.tripodi', [Validators.required]],
       password: ['Qtm!2026', [Validators.required]]
     });
+  }
+
+  togglePasswordVisibility(): void {
+    this.passwordVisible = !this.passwordVisible;
   }
 
   ngOnInit(): void {

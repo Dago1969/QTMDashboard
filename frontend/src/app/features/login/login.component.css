@@ -42,3 +42,31 @@ h2 {
   align-items: center;
   margin-bottom: 32px;
 }
+
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-field input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  color: var(--TXT, #454F78);
+}
+
+.password-toggle .material-icons {
+  font-size: 20px;
+}
