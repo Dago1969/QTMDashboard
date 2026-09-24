@@ -49,4 +49,6 @@
 
     <include file="20260909-01-add-caregiver-relationship.yaml" relativeToChangelogFile="true"/>
 
+    <include file="20261002-01-add-patient-department.yaml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>
