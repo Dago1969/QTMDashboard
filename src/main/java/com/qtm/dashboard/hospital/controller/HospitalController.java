@@ -19,7 +19,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/hospital")
+@RequestMapping({"/api/hospital", "/hospital"})
 @RequiredArgsConstructor
 public class HospitalController {
 
@@ -49,5 +49,15 @@ public class HospitalController {
         hospitalService.deleteAssociation(id);
         log.info("[HospitalController] DELETE /api/hospital/{} completed", id);
         return ResponseEntity.noContent().build();
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<HospitalDto> findById(@PathVariable Long id) {
+        log.info("[HospitalController] GET /api/hospital/{}", id);
+        HospitalDto hospital = hospitalService.findById(id); // o il corrispondente metodo del tuo service
+        if (hospital == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(hospital);
     }
 }

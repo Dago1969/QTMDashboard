@@ -1,0 +1,21 @@
+.page-container { padding: 8px 12px }
+.page-title { font-size: 20px; margin: 0; color: #0b3b66 }
+.card-custom { background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(16,24,40,0.04); }
+.custom-input { background: #f6fbff; border: 1px solid transparent }
+.custom-input:focus { border-color: #2b7be4; box-shadow: none }
+.btn-custom-blue { background:#2b7be4; border-color:#2b7be4; color: #fff; border-radius: 8px }
+.btn-custom-outline { border-radius: 8px }
+.icon-btn { background: transparent; border: none; cursor: pointer }
+.asl-empty-cell { padding: 24px; text-align: center }
+
+/* Badges for status */
+.badge { display:inline-block; padding:4px 8px; border-radius:12px; font-size:12px }
+.badge-open { background:#e6f4ff; color:#0b66b2 }
+.badge-closed { background:#f3f3f3; color:#6b7280 }
+
+.d-flex { display:flex }
+.justify-content-between { justify-content:space-between }
+.align-items-center { align-items:center }
+.mb-4 { margin-bottom:16px }
+.p-4 { padding:16px }
+.w-50 { width:50% }

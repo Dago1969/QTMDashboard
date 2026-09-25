@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, TemplateRef, ViewChild } from '@angular/core';
+import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import { SortableTableComponent, SortColumn } from '../../shared/components/sortable-table/sortable-table.component';
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
@@ -24,6 +26,15 @@ interface TicketRecord {
   contentJson?: string;
   createdAt?: string;
   updatedAt?: string;
+  // parsed fields from contentJson
+  contentParsed?: any;
+  patientCode?: string;
+  patientName?: string;
+  patientDisplay?: string;
+  visitDate?: string;
+  visitDateFormatted?: string;
+  prevalentNurseName?: string;
+  hospitalDepartment?: string;
 }
 
 interface TicketPageResponse {
@@ -38,6 +49,7 @@ interface TicketFilterOptions {
   realms?: string[];
   projects?: string[];
   patientIds?: string[];
+  nurseIds?: string[];
   statuses?: string[];
 }
 
@@ -47,159 +59,68 @@ interface TicketFilterOptions {
 @Component({
   selector: 'app-tickets-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, QtmStepModalComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, QtmStepModalComponent, SortableTableComponent],
+  styleUrls: ['./tickets-management.component.css'],
   template: `
-    <div class="card dashboard-content-card asl-management-shell hospital-management-shell">
-      <div class="dashboard-header">
-        <div class="asl-page-heading">
-          <h2>{{ t('dashboard.menu.tickets') }}</h2>
-          <p>{{ t('tickets.management.subtitle') }}</p>
-        </div>
-        <div class="asl-header-actions hospital-header-actions">
-          <button class="btn btn-outline asl-filter-toggle" type="button" (click)="showFilters = !showFilters">
-            <span class="asl-filter-toggle-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 5H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M5 9H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M7 13H11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            {{ t('asl.actions.filters') }}
-          </button>
-        </div>
+    <div class="page-container">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">{{ t('tickets.search.title') || 'Ricerca Ticket' }}</h1>
       </div>
 
-      <p class="dashboard-selection-info hospital-management-info">{{ t('tickets.management.detail') }}</p>
-
-      <section *ngIf="showFilters" class="search-filters-panel asl-filters-panel">
-        <div class="asl-filters-grid hospital-filters-grid">
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('tickets.filter.realm') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.realm" (ngModelChange)="onFiltersChanged('realm')">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let option of realmOptions" [value]="option">{{ option }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('tickets.filter.project') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.project" (ngModelChange)="onFiltersChanged('project')">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let option of projectOptions" [value]="option">{{ option }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('tickets.filter.patientId') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.patientId" (ngModelChange)="onFiltersChanged('patientId')">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let option of patientOptions" [value]="option">{{ option }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('tickets.filter.status') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.status" (ngModelChange)="onFiltersChanged('status')">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let option of statusOptions" [value]="option">{{ option }}</option>
-            </select>
-          </label>
-          <div class="asl-filter-actions">
-            <button class="btn btn-primary" type="button" (click)="search()">{{ t('crud.actions.search') }}</button>
-            <button class="btn btn-outline" type="button" (click)="resetFilters()">{{ t('crud.actions.reset') }}</button>
-          </div>
-        </div>
-      </section>
-
-      <div *ngIf="message" class="alert" [class.alert-success]="messageType === 'success'" [class.alert-danger]="messageType === 'error'">
-        {{ message }}
-      </div>
-
-      <section class="modern-table asl-table-panel">
-        <div class="asl-table-toolbar">
-          <div class="asl-table-count">{{ totalElements }} {{ t('crud.items') }}</div>
-          <button *ngIf="!showTableSearch" class="asl-table-search-trigger" type="button" (click)="showTableSearch = true" [attr.aria-label]="t('search.table.open')" [title]="t('search.table.open')">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <div *ngIf="showTableSearch" class="table-search-input-wrapper asl-table-search-box">
-            <span class="search-icon">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            <input
-              type="text"
-              [(ngModel)]="tableSearchText"
-              [ngModelOptions]="{ standalone: true }"
-              [placeholder]="t('search.table.placeholder')"
-              class="table-search-input"
-            />
-            <button class="close-btn" type="button" (click)="closeTableSearch()" [title]="t('search.table.close')">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 4L12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="table-responsive asl-table-wrapper">
-          <table class="search-table asl-search-table hospital-search-table">
-            <thead>
-              <tr>
-                <th>{{ t('tickets.column.id') }}</th>
-                <th>{{ t('tickets.column.createdAt') }}</th>
-                <th>{{ t('tickets.column.realm') }}</th>
-                <th>{{ t('tickets.column.project') }}</th>
-                <th>{{ t('tickets.column.patientId') }}</th>
-                <th>{{ t('tickets.column.therapeuticPlanId') }}</th>
-                <th>{{ t('tickets.column.ticketType') }}</th>
-                <th>{{ t('tickets.column.status') }}</th>
-                <th>{{ t('tickets.column.title') }}</th>
-                <th>{{ t('search.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let ticket of tableFilteredRecords(); trackBy: trackById">
-                <td>{{ ticket.id }}</td>
-                <td>{{ formatDateTime(ticket.createdAt) }}</td>
-                <td>{{ ticket.realm || '-' }}</td>
-                <td>{{ ticket.project || '-' }}</td>
-                <td>{{ ticket.patientId || '-' }}</td>
-                <td>{{ ticket.therapeuticPlanId || '-' }}</td>
-                <td>{{ ticket.ticketType || '-' }}</td>
-                <td>{{ ticket.status || '-' }}</td>
-                <td>{{ ticket.title || '-' }}</td>
-                <td class="actions">
-                  <button class="icon-btn" type="button" (click)="openDetails(ticket)" [title]="t('search.action.view')">
-                    <span class="icon">👁️</span>
-                  </button>
-                  <button class="icon-btn" type="button" (click)="closeTicket(ticket)" [title]="t('tickets.action.close')" [disabled]="!canClose(ticket) || closingTicketId === ticket.id">
-                    <span class="icon">✅</span>
-                  </button>
-                </td>
-              </tr>
-              <tr *ngIf="tableFilteredRecords().length === 0">
-                <td class="asl-empty-cell" colspan="10">{{ t('tickets.search.noResults') }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="asl-table-footer" *ngIf="totalElements > 0">
-          <div class="search-pagination asl-pagination">
-            <span class="asl-pagination-text">{{ t('asl.pagination.page') }} {{ currentPage + 1 }} {{ t('asl.pagination.of') }} {{ totalPages }}</span>
-            <div class="asl-pagination-buttons">
-              <button class="btn btn-outline asl-pagination-button" type="button" (click)="loadPage(currentPage - 1)" [disabled]="currentPage <= 0" [attr.aria-label]="t('asl.pagination.previous')">&lt;</button>
-              <button class="btn btn-outline asl-pagination-button" type="button" (click)="loadPage(currentPage + 1)" [disabled]="currentPage + 1 >= totalPages" [attr.aria-label]="t('asl.pagination.next')">&gt;</button>
+      <div class="card card-custom p-4 mb-4">
+        <form [formGroup]="filterForm" (ngSubmit)="onSearch()">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.realm') }}</label>
+              <select formControlName="realm" class="form-select custom-input">
+                <option value="">{{ t('crud.select.all') }}</option>
+                <option *ngFor="let r of realmOptions" [value]="r">{{ r }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.project') }}</label>
+              <select formControlName="project" class="form-select custom-input">
+                <option value="">{{ t('crud.select.all') }}</option>
+                <option *ngFor="let p of projectOptions" [value]="p">{{ p }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.patient') || 'Paziente' }}</label>
+              <select formControlName="patientId" class="form-select custom-input">
+                <option value="">{{ t('crud.select.all') }}</option>
+                <option *ngFor="let p of patientOptions" [value]="p">{{ p }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.nurse') || 'Infermiere' }}</label>
+              <select formControlName="nurseId" class="form-select custom-input">
+                <option value="">{{ t('crud.select.all') }}</option>
+                <option *ngFor="let n of nurseOptions" [value]="n">{{ n }}</option>
+              </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+              <button type="submit" class="btn btn-primary btn-custom-blue w-50">{{ t('crud.actions.search') }}</button>
+              <button type="button" (click)="onReset()" class="btn btn-outline btn-custom-outline w-50">{{ t('crud.actions.reset') }}</button>
             </div>
           </div>
-        </div>
-      </section>
+        </form>
+      </div>
+
+      <div class="card card-custom p-4">
+        <app-sortable-table
+          [columns]="tableColumns"
+          [data]="tableFilteredRecords()"
+          [totalItems]="totalElements"
+          [page]="currentPage"
+          [pageSize]="pageSize"
+          [currentSort]="tableSort"
+          (sortChange)="onTableSortChange($event)"
+          (pageChange)="loadPage($event)">
+        </app-sortable-table>
+      </div>
     </div>
 
-    <qtm-step-modal
+        <qtm-step-modal
       *ngIf="selectedTicket"
       [title]="t('tickets.details.title')"
       [step]="1"
@@ -268,14 +189,18 @@ interface TicketFilterOptions {
     </qtm-step-modal>
   `
 })
-export class TicketsManagementComponent implements OnInit {
+export class TicketsManagementComponent implements OnInit, AfterViewInit {
+  filterForm!: FormGroup;
   filters = {
     realm: '',
     project: '',
     patientId: '',
+    nurseId: '',
     status: ''
   };
   tickets: TicketRecord[] = [];
+  // sort state for table (used to request backend or in-memory sort)
+  tableSort: { active?: string; direction?: 'asc' | 'desc' | null } = { active: 'visitDate', direction: 'desc' };
   translations: Record<string, string> = {};
   showFilters = true;
   showTableSearch = false;
@@ -287,6 +212,7 @@ export class TicketsManagementComponent implements OnInit {
   realmOptions: string[] = [];
   projectOptions: string[] = [];
   patientOptions: string[] = [];
+  nurseOptions: string[] = [];
   statusOptions: string[] = [];
   selectedTicket: TicketRecord | null = null;
   closingTicketId: number | null = null;
@@ -298,85 +224,69 @@ export class TicketsManagementComponent implements OnInit {
     private readonly i18nPropertiesService: I18nPropertiesService
   ) {}
 
+  // initialize reactive form
+  private initFilterForm(): void {
+    this.filterForm = new FormBuilder().group({
+      realm: [''],
+      project: [''],
+      patientId: [''],
+      nurseId: [''],
+      status: ['']
+    });
+  }
+
+  onSearch(): void {
+    const v = this.filterForm.value ?? {};
+    this.filters.realm = v.realm ?? '';
+    this.filters.project = v.project ?? '';
+    this.filters.patientId = v.patientId ?? '';
+    this.filters.nurseId = v.nurseId ?? '';
+    this.filters.status = v.status ?? '';
+    this.loadPage(0);
+  }
+
+  onReset(): void {
+    this.filterForm.reset({ realm: '', project: '', patientId: '', nurseId: '', status: '' });
+    this.resetFilters();
+  }
+
+  // restore internal filters state and reload first page
+  private resetFilters(): void {
+    this.filters = { realm: '', project: '', patientId: '', nurseId: '', status: '' };
+    this.loadPage(0);
+  }
+
   ngOnInit(): void {
     this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations: Record<string, string>) => {
       this.translations = translations;
       this.loadFilterOptions(true);
+      this.initTableColumns();
+    });
+    this.initFilterForm();
+  }
+
+  tableColumns: SortColumn[] = [];
+
+  @ViewChild('actionsTpl', { static: false }) actionsTpl?: TemplateRef<any>;
+
+  ngAfterViewInit(): void {
+    // assign templates when available
+    setTimeout(() => {
+      if (!this.tableColumns || this.tableColumns.length === 0) return;
+      this.tableColumns = this.tableColumns.map((c) => {
+        if (c.key === '__actions') {
+          return { ...c, customTemplate: this.actionsTpl ?? null };
+        }
+        return c;
+      });
     });
   }
 
-  t(key: string): string {
-    return this.translations[key] ?? key;
-  }
-
-  search(): void {
+  // handle sort change from sortable-table
+  onTableSortChange(sort: { active?: string; direction?: 'asc' | 'desc' | null }): void {
+    this.tableSort = { active: sort?.active, direction: sort?.direction ?? null };
+    // if backend supports sort param we'll request first page with sort
     this.loadPage(0);
-  }
-
-  resetFilters(): void {
-    this.filters = {
-      realm: '',
-      project: '',
-      patientId: '',
-      status: ''
-    };
-    this.loadFilterOptions(true);
-  }
-
-  onFiltersChanged(changedField: 'realm' | 'project' | 'patientId' | 'status'): void {
-    if (changedField === 'realm') {
-      this.filters.project = '';
-      this.filters.patientId = '';
-      this.filters.status = '';
-    }
-
-    if (changedField === 'project') {
-      this.filters.patientId = '';
-      this.filters.status = '';
-    }
-
-    if (changedField === 'patientId') {
-      this.filters.status = '';
-    }
-
-    this.loadFilterOptions(false);
-  }
-
-  loadPage(page: number): void {
-    const normalizedPage = Math.max(0, page);
-    let params = new HttpParams()
-      .set('page', String(normalizedPage))
-      .set('size', String(this.pageSize))
-      .set('sort', 'createdAt,desc');
-
-    if (this.filters.realm.trim()) {
-      params = params.set('realm', this.filters.realm.trim());
-    }
-    if (this.filters.project.trim()) {
-      params = params.set('project', this.filters.project.trim());
-    }
-    if (this.filters.patientId.trim()) {
-      params = params.set('patientId', this.filters.patientId.trim());
-    }
-    if (this.filters.status.trim()) {
-      params = params.set('status', this.filters.status.trim());
-    }
-
-    this.http.get<TicketPageResponse>(`${environment.ticketApiBaseUrl}/tickets/search`, { params }).subscribe({
-      next: (response) => {
-        this.tickets = response.content ?? [];
-        this.currentPage = response.number ?? normalizedPage;
-        this.totalPages = Math.max(1, response.totalPages ?? 1);
-        this.totalElements = response.totalElements ?? this.tickets.length;
-      },
-      error: (error: { error?: ProblemDetailPayload }) => {
-        this.tickets = [];
-        this.currentPage = 0;
-        this.totalPages = 1;
-        this.totalElements = 0;
-        this.showErrorMessage(error, 'tickets.messages.loadError');
-      }
-    });
   }
 
   closeTableSearch(): void {
@@ -396,11 +306,17 @@ export class TicketsManagementComponent implements OnInit {
         ticket.realm ?? '',
         ticket.project ?? '',
         ticket.patientId ?? '',
+        ticket.patientCode ?? '',
+        ticket.patientName ?? '',
+        ticket.patientDisplay ?? '',
         ticket.therapeuticPlanId ?? '',
         ticket.ticketType ?? '',
         ticket.status ?? '',
         ticket.title ?? '',
-        ticket.description ?? ''
+        ticket.description ?? '',
+        ticket.visitDateFormatted ?? '',
+        ticket.prevalentNurseName ?? '',
+        ticket.hospitalDepartment ?? ''
       ].join(' ').toLowerCase();
       return haystack.includes(normalizedSearch);
     });
@@ -430,7 +346,7 @@ export class TicketsManagementComponent implements OnInit {
   openDetails(ticket: TicketRecord): void {
     this.http.get<TicketRecord>(`${environment.ticketApiBaseUrl}/tickets/${ticket.id}`).subscribe({
       next: (loadedTicket) => {
-        this.selectedTicket = loadedTicket;
+        this.selectedTicket = this.enrichTicketRecord(loadedTicket);
       },
       error: (error: { error?: ProblemDetailPayload }) => {
         this.showErrorMessage(error, 'tickets.messages.loadError');
@@ -453,9 +369,10 @@ export class TicketsManagementComponent implements OnInit {
         this.closingTicketId = null;
         this.message = this.t('tickets.messages.closeSuccess');
         this.messageType = 'success';
-        this.tickets = this.tickets.map((currentTicket) => currentTicket.id === updatedTicket.id ? updatedTicket : currentTicket);
-        if (this.selectedTicket?.id === updatedTicket.id) {
-          this.selectedTicket = updatedTicket;
+        const enriched = this.enrichTicketRecord(updatedTicket);
+        this.tickets = this.tickets.map((currentTicket) => currentTicket.id === enriched.id ? enriched : currentTicket);
+        if (this.selectedTicket?.id === enriched.id) {
+          this.selectedTicket = enriched;
         }
         this.loadFilterOptions(true);
         window.setTimeout(() => {
@@ -481,6 +398,9 @@ export class TicketsManagementComponent implements OnInit {
     if (this.filters.patientId.trim()) {
       params = params.set('patientId', this.filters.patientId.trim());
     }
+    if (this.filters.nurseId && this.filters.nurseId.trim()) {
+      params = params.set('nurseId', this.filters.nurseId.trim());
+    }
     if (this.filters.status.trim()) {
       params = params.set('status', this.filters.status.trim());
     }
@@ -490,6 +410,7 @@ export class TicketsManagementComponent implements OnInit {
         this.realmOptions = response.realms ?? [];
         this.projectOptions = response.projects ?? [];
         this.patientOptions = response.patientIds ?? [];
+        this.nurseOptions = response.nurseIds ?? [];
         this.statusOptions = response.statuses ?? [];
         this.normalizeSelectedFilters();
         if (loadTicketsAfter) {
@@ -500,6 +421,7 @@ export class TicketsManagementComponent implements OnInit {
         this.realmOptions = [];
         this.projectOptions = [];
         this.patientOptions = [];
+        this.nurseOptions = [];
         this.statusOptions = [];
         this.showErrorMessage(error, 'tickets.messages.loadError');
       }
@@ -516,9 +438,96 @@ export class TicketsManagementComponent implements OnInit {
     if (this.filters.patientId && !this.patientOptions.includes(this.filters.patientId)) {
       this.filters.patientId = '';
     }
+    if (this.filters.nurseId && !this.nurseOptions.includes(this.filters.nurseId)) {
+      this.filters.nurseId = '';
+    }
     if (this.filters.status && !this.statusOptions.includes(this.filters.status)) {
       this.filters.status = '';
     }
+  }
+
+  // translation helper
+  t(key: string, fallback?: string): string {
+    return this.translations?.[key] ?? fallback ?? key;
+  }
+
+  // initialize columns shown in the sortable table
+  private initTableColumns(): void {
+    this.tableColumns = [
+      { key: 'id', label: this.t('tickets.column.id'), sortable: true },
+      { key: 'patientDisplay', label: this.t('tickets.column.patient') || 'Paziente', sortable: true },
+      { key: 'visitDateFormatted', label: this.t('tickets.column.visitDate') || 'Data Visita', sortable: true },
+      { key: 'prevalentNurseName', label: this.t('tickets.column.prevalentNurse') || 'Infermiere', sortable: true },
+      { key: 'hospitalDepartment', label: this.t('tickets.column.hospitalDepartment') || 'Ospedale / Reparto', sortable: true },
+      { key: 'status', label: this.t('tickets.column.status'), sortable: true },
+      
+      { key: '__actions', label: this.t('common.actions') || 'Actions', sortable: false }
+    ];
+  }
+
+  // load a page of tickets from backend, honoring filters and sort
+  loadPage(page: number): void {
+    const paramsObj: { [k: string]: string } = {};
+    paramsObj['page'] = String(page ?? 0);
+    paramsObj['size'] = String(this.pageSize ?? 20);
+
+    if (this.filters.realm?.trim()) paramsObj['realm'] = this.filters.realm.trim();
+    if (this.filters.project?.trim()) paramsObj['project'] = this.filters.project.trim();
+    if (this.filters.patientId?.trim()) paramsObj['patientId'] = this.filters.patientId.trim();
+    if (this.filters.status?.trim()) paramsObj['status'] = this.filters.status.trim();
+
+    if (this.tableSort?.active && this.tableSort?.direction) {
+      paramsObj['sort'] = `${this.tableSort.active},${this.tableSort.direction}`;
+    }
+
+    let params = new HttpParams();
+    Object.keys(paramsObj).forEach((k) => { params = params.set(k, paramsObj[k]); });
+
+    this.http.get<TicketPageResponse>(`${environment.ticketApiBaseUrl}/tickets/search`, { params }).subscribe({
+      next: (resp) => {
+        this.tickets = (resp.content ?? []).map((t) => this.enrichTicketRecord(t));
+        this.totalPages = resp.totalPages ?? 1;
+        this.totalElements = resp.totalElements ?? (this.tickets.length ?? 0);
+        this.pageSize = resp.size ?? this.pageSize;
+        this.currentPage = resp.number ?? page ?? 0;
+      },
+      error: (err: { error?: ProblemDetailPayload }) => {
+        this.showErrorMessage(err, 'tickets.messages.loadError');
+      }
+    });
+  }
+
+  // parse contentJson and populate helper fields used in UI
+  private enrichTicketRecord(t: TicketRecord): TicketRecord {
+    const copy: TicketRecord = { ...t };
+    if (copy.contentJson) {
+      try {
+        copy.contentParsed = JSON.parse(copy.contentJson);
+      } catch (e) {
+        copy.contentParsed = null;
+      }
+    }
+
+    const c = copy.contentParsed ?? {};
+    // patient fields
+    copy.patientId = copy.patientId ?? (c.patientId ? String(c.patientId) : copy.patientId);
+    copy.patientCode = c.patientCode ?? copy.patientCode;
+    copy.patientName = c.patientName ?? copy.patientName;
+    copy.patientDisplay = copy.patientName ? `${copy.patientName} (${copy.patientCode ?? copy.patientId ?? '-'})` : (copy.patientCode ?? copy.patientId ?? '-');
+
+    // visit date
+    copy.visitDate = c.visitDate ?? c.startDateTime ?? copy.visitDate;
+    copy.visitDateFormatted = this.formatDateTime(copy.visitDate);
+
+    // nurse
+    copy.prevalentNurseName = c.prevalentNurseName ?? copy.prevalentNurseName;
+
+    // hospital / department
+    const hospital = c.hospitalName ?? c.hospital ?? '';
+    const dept = c.departmentName ?? c.department ?? '';
+    copy.hospitalDepartment = hospital ? (dept ? `${hospital} / ${dept}` : hospital) : (dept || '-');
+
+    return copy;
   }
 
   private showErrorMessage(error: { error?: ProblemDetailPayload } | undefined, fallbackKey: string): void {

@@ -63,6 +63,35 @@ public class HospitalService {
     }
 
     @Transactional(readOnly = true)
+    public HospitalDto findById(Long id) {
+        log.info("[HospitalService] ricerca ospedale id={}", id);
+        Objects.requireNonNull(id, "Hospital ID non può essere null");
+
+        // 1. Cerca prima nel database locale
+        Optional<HospitalEntity> localEntity = hospitalRepository.findById(id);
+        if (localEntity.isPresent()) {
+            return hospitalMapper.entityToDto(localEntity.get());
+        }
+
+        // 2. Se non è salvato localmente, tenta il recupero dal servizio sorgente (QTMTicket)
+        try {
+            HospitalDto dto = restClient.get()
+                    .uri("/hospitals/{id}", id)
+                    .retrieve()
+                    .body(HospitalDto.class);
+
+            if (dto != null) {
+                dto.setId(id);
+                return dto;
+            }
+        } catch (Exception ex) {
+            log.warn("[HospitalService] Impossibile recuperare ospedale id={} da QTMTicket: {}", id, ex.getMessage());
+        }
+
+        return null;
+    }
+    
+    @Transactional(readOnly = true)
     public List<HospitalOverviewDto> findAllWithImportStatus() {
         log.info("[HospitalService] richiesta overview ospedali con stato associazione");
         List<HospitalDto> sourceHospitals = fetchAllHospitalsFromTicket();
