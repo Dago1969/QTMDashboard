@@ -31,6 +31,8 @@ export class SortableTableComponent {
   @Output() sortChange = new EventEmitter<SortState>();
   @Output() pageChange = new EventEmitter<number>();
 
+  readonly Math = Math;
+
   // trackBy helper
   trackByIndex(_: number, __: any): number {
     return _;
@@ -81,5 +83,9 @@ export class SortableTableComponent {
     if (this.page + 1 < totalPages) {
       this.pageChange.emit(this.page + 1);
     }
+  }
+
+  displayValue(row: any, column: SortColumn): any {
+    return row[column.key] ?? '-';
   }
 }

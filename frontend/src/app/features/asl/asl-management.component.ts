@@ -1,488 +1,259 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { I18nPropertiesService } from '../../core/i18n-properties.service';
-// FIXME Francesco: mantenere gli endpoint ASL agganciati alla configurazione frontend, senza URL assoluti cablati.
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-
-interface ProblemDetailPayload {
-  detail?: string;
-  message?: string;
-}
+import { I18nPropertiesService } from '../../core/i18n-properties.service';
+import {
+  SearchFilterField,
+  SearchPageActionEvent,
+  SearchPageComponent,
+  SearchResultColumn
+} from '../../shared/search-page.component';
 
 interface AslRecord {
   id: number;
-  codiceAzienda: string;
-  denominazioneAzienda: string;
-  provinciaId?: number;
-  indirizzo?: string;
-  telefono?: string;
-  email?: string;
-  imported: boolean;
-  note?: string | null;
+  codiceAzienda?: string;
+  denominazioneAzienda?: string;
   codiceRegione?: string;
-  anno?: number;
-  provinciaDescrizione?: string;
   regioneDescrizione?: string;
+  provinciaDescrizione?: string;
+  anno?: number;
+  indirizzo?: string;
+  email?: string;
+  telefono?: string;
+  imported: boolean;
 }
 
-interface RegionOption {
-  id: number;
-  name: string;
-  regionCode?: string;
-  code?: string;
+interface Referent {
+  id?: number;
+  firstName: string;
+  lastName: string;
+  role: string;
+  phone: string;
+  email: string;
+  note: string;
 }
 
 @Component({
   selector: 'app-asl-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SearchPageComponent],
   template: `
-    <div class="card dashboard-content-card asl-management-shell">
-      <div class="dashboard-header">
-        <div class="asl-page-heading">
-          <h2>{{ t('dashboard.menu.asl') }}</h2>
-          <p>{{ t('asl.management.subtitle') }}</p>
-        </div>
-        <div class="asl-header-actions">
-          <button class="btn btn-outline asl-filter-toggle" type="button" (click)="showFilters = !showFilters">
-            <span class="asl-filter-toggle-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 5H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M5 9H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M7 13H11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            {{ t('asl.actions.filters') }}
-          </button>
-        </div>
-      </div>
+    <app-search-page
+      [titleKey]="'dashboard.menu.asl'"
+      [subtitleKey]="'asl.management.subtitle'"
+      [emptyStateKey]="'search.noResults'"
+      [filters]="filters"
+      [columns]="columns"
+      [fetchResults]="fetchResults"
+      [showCreateAction]="false"
+      (actionColumn)="onAction($event)"
+    />
 
-      <section *ngIf="showFilters" class="search-filters-panel asl-filters-panel">
-        <div class="asl-filters-grid">
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('asl.filter.id') }}</span>
-            <input class="asl-filter-input" type="number" [(ngModel)]="filters.id" />
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('asl.filter.code') }}</span>
-            <input class="asl-filter-input" type="text" [(ngModel)]="filters.code" />
-          </label>
-          <label class="asl-filter-field asl-filter-field-wide">
-            <span class="asl-filter-label">{{ t('asl.filter.name') }}</span>
-            <input class="asl-filter-input" type="text" [(ngModel)]="filters.name" />
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('patients.field.region') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.regionId" name="regionId" (ngModelChange)="onRegionChange($event)">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let r of regions" [ngValue]="toSelectValue(r.id)">{{ r.name }}{{ r.regionCode ? ' (' + padRegionCode(r.regionCode) + ')' : '' }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('patients.field.province') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.provinceId" name="provinceId" [disabled]="!provinces.length">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let p of provinces" [ngValue]="toSelectValue(p.id)">{{ p.name }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('hospital.filter.imported') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.imported">
-              <option value="all">{{ t('hospital.filter.status.all') }}</option>
-              <option value="imported">{{ t('hospital.filter.status.imported') }}</option>
-              <option value="notImported">{{ t('hospital.filter.status.notImported') }}</option>
-            </select>
-          </label>
-          <div class="asl-filter-actions">
-            <button class="btn btn-primary" type="button" (click)="search()">{{ t('crud.actions.search') }}</button>
-            <button class="btn btn-outline" type="button" (click)="resetFilters()">{{ t('crud.actions.reset') }}</button>
-          </div>
-        </div>
-      </section>
-
-      <div *ngIf="message" class="alert" [class.alert-success]="messageType === 'success'" [class.alert-danger]="messageType === 'error'">
-        {{ message }}
-      </div>
-
-      <section class="modern-table asl-table-panel">
-        <div class="asl-table-toolbar">
-          <div class="asl-table-toolbar-spacer"></div>
-          <button *ngIf="!showTableSearch" class="asl-table-search-trigger" type="button" (click)="showTableSearch = true" [attr.aria-label]="t('search.table.open')" [title]="t('search.table.open')">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <div *ngIf="showTableSearch" class="table-search-input-wrapper asl-table-search-box">
-            <span class="search-icon">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            <input
-              type="text"
-              [(ngModel)]="tableSearchText"
-              [ngModelOptions]="{ standalone: true }"
-              [placeholder]="t('search.table.placeholder')"
-              class="table-search-input"
-            />
-            <button class="close-btn" type="button" (click)="closeTableSearch()" [title]="t('search.table.close')">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 4L12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
+    <div *ngIf="referentsAsl" class="asl-modal-backdrop" (click)="closeReferents()">
+      <section class="asl-referents-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <header class="qtm-modal-header asl-referents-header">
+          <div class="qtm-modal-header-top">
+            <h3 class="qtm-modal-title">{{ t('asl.referents.title') }}</h3>
+            <button class="qtm-modal-close" type="button" (click)="closeReferents()" [attr.aria-label]="t('asl.referents.close')">
+              <span class="qtm-modal-close-circle" aria-hidden="true"><span class="qtm-modal-close-icon"></span></span>
             </button>
           </div>
-        </div>
-        <div class="table-responsive asl-table-wrapper">
-          <table class="search-table asl-search-table">
-            <thead>
-              <tr>
-                <th>{{ t('asl.column.id') }}</th>
-                <th>{{ t('asl.column.code') }}</th>
-                <th>{{ t('asl.column.name') }}</th>
-                <th>{{ t('asl.column.regionDescription') }}</th>
-                <th>{{ t('asl.column.provinceDescription') }}</th>
-                <th>{{ t('asl.column.year') }}</th>
-                <th>{{ t('asl.column.address') }}</th>
-                <th>{{ t('asl.column.email') }}</th>
-                <th>{{ t('asl.column.phone') }}</th>
-                <th class="asl-actions-column">{{ t('search.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let asl of paginatedRecords(); trackBy: trackById">
-                <td class="asl-cell-id">{{ asl.id }}</td>
-                <td>{{ asl.codiceAzienda }}</td>
-                <td class="asl-cell-name">{{ asl.denominazioneAzienda }}</td>
-                <td>{{ formatRegion(asl) }}</td>
-                <td>{{ asl.provinciaDescrizione || '-' }}</td>
-                <td class="asl-cell-year">{{ asl.anno ?? '-' }}</td>
-                <td class="asl-cell-address">{{ asl.indirizzo || '-' }}</td>
-                <td class="asl-cell-email">{{ asl.email || '-' }}</td>
-                <td class="asl-cell-phone">{{ asl.telefono || '-' }}</td>
-                <td class="asl-actions-cell">
-                  <button class="btn btn-primary btn-sm" type="button" (click)="importRow(asl)" *ngIf="!asl.imported">
-                    {{ t('asl.action.importRow') }}
-                  </button>
-                  <button class="btn btn-secondary btn-sm" type="button" (click)="disassociateRow(asl)" *ngIf="asl.imported">
-                    {{ t('asl.action.disassociateRow') }}
-                  </button>
-                </td>
-              </tr>
-              <tr *ngIf="paginatedRecords().length === 0">
-                <td class="asl-empty-cell" colspan="10">{{ t('search.noResults') }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="asl-table-footer" *ngIf="filteredRecords().length > 0">
-          <div class="asl-table-count">{{ filteredRecords().length }} {{ t('crud.items') }}</div>
-          <div class="search-pagination asl-pagination">
-            <span class="asl-pagination-text">{{ t('asl.pagination.page') }} {{ currentPage }} {{ t('asl.pagination.of') }} {{ totalPages }}</span>
-            <div class="asl-pagination-buttons">
-              <button class="btn btn-outline asl-pagination-button" type="button" (click)="goToPage(currentPage-1)" [disabled]="currentPage<=1" [attr.aria-label]="t('asl.pagination.previous')">&lt;</button>
-              <button class="btn btn-outline asl-pagination-button" type="button" (click)="goToPage(currentPage+1)" [disabled]="currentPage>=totalPages" [attr.aria-label]="t('asl.pagination.next')">&gt;</button>
-            </div>
+        </header>
+        <div class="asl-referents-subheader"><strong>{{ referentsAsl.denominazioneAzienda || referentsAsl.codiceAzienda }}</strong></div>
+        <div class="asl-referents-content">
+          <div class="asl-referents-list">
+            <h4>{{ t('asl.referents.current') }} ({{ referents.length }})</h4>
+            <p *ngIf="referents.length === 0" class="asl-referents-empty">{{ t('asl.referents.empty') }}</p>
+            <article *ngFor="let referent of referents" class="asl-referent-card" [class.asl-referent-card-editing]="editingReferentId === referent.id">
+              <div class="asl-referent-details">
+                <strong class="asl-referent-name">{{ referent.firstName }} {{ referent.lastName }}</strong>
+                <span class="asl-referent-role">{{ referent.role || '-' }}</span>
+                <span class="asl-referent-contact">{{ referent.email || '-' }} · {{ referent.phone || '-' }}</span>
+                <small *ngIf="referent.note" class="asl-referent-note-text">{{ referent.note }}</small>
+              </div>
+              <div class="asl-referent-actions">
+                <button class="btn btn-outline btn-sm" type="button" (click)="editReferent(referent)" [disabled]="referentsBusy">
+                  {{ t('asl.referents.edit') }}
+                </button>
+                <button class="btn btn-outline-danger btn-sm asl-referent-remove" type="button" (click)="removeReferent(referent)" [disabled]="referentsBusy">
+                  {{ t('asl.referents.remove') }}
+                </button>
+              </div>
+            </article>
           </div>
+          <form class="asl-referent-form asl-tenapp-form" (ngSubmit)="saveReferent()">
+            <h4>{{ editingReferentId !== null ? t('asl.referents.editTitle') + ' (' + newReferent.firstName + ' ' + newReferent.lastName + ')' : t('asl.referents.add') }}</h4>
+            <div class="asl-referent-form-grid">
+              <label class="asl-tenapp-field"><span>{{ t('asl.referents.firstName') }}</span><input class="asl-filter-input" type="text" name="firstName" [(ngModel)]="newReferent.firstName" required /></label>
+              <label class="asl-tenapp-field"><span>{{ t('asl.referents.lastName') }}</span><input class="asl-filter-input" type="text" name="lastName" [(ngModel)]="newReferent.lastName" required /></label>
+              <label class="asl-tenapp-field"><span>{{ t('asl.referents.role') }}</span><input class="asl-filter-input" type="text" name="role" [(ngModel)]="newReferent.role" /></label>
+              <label class="asl-tenapp-field"><span>{{ t('asl.referents.phone') }}</span><input class="asl-filter-input" type="tel" name="phone" [(ngModel)]="newReferent.phone" /></label>
+              <label class="asl-referent-field-wide asl-tenapp-field"><span>{{ t('asl.referents.email') }}</span><input class="asl-filter-input" type="email" name="email" [(ngModel)]="newReferent.email" /></label>
+              <label class="asl-referent-note asl-tenapp-field"><span>{{ t('asl.referents.note') }}</span><textarea class="asl-filter-input" name="note" [(ngModel)]="newReferent.note" rows="3"></textarea></label>
+            </div>
+            <div class="asl-referent-form-actions">
+              <button class="btn btn-primary" type="submit" [disabled]="referentsBusy">
+                {{ editingReferentId !== null ? t('asl.referents.updateAction') : t('asl.referents.addAction') }}
+              </button>
+              <button *ngIf="editingReferentId !== null" class="btn btn-outline" type="button" (click)="cancelEdit()" [disabled]="referentsBusy">
+                {{ t('asl.referents.cancelEdit') }}
+              </button>
+            </div>
+          </form>
         </div>
       </section>
     </div>
   `
 })
 export class AslManagementComponent implements OnInit {
-  filters = {
-    id: '' as string,
-    code: '' as string,
-    name: '' as string,
-    imported: 'all' as 'all' | 'imported' | 'notImported',
-    regionId: '' as string,
-    regionCode: '' as string,
-    provinceId: '' as string
-  };
-  allAslRecords: AslRecord[] = [];
-  // regions possono arrivare con regionCode o code a seconda della sorgente.
-  regions: RegionOption[] = [];
-  provinces: Array<{ id: number; name: string }> = [];
-  pageSize = 10;
-  currentPage = 1;
-  showFilters = true;
-  showTableSearch = false;
-  tableSearchText = '';
-  translations: Record<string, string> = {};
-  message = '';
-  messageType: 'success' | 'error' = 'success';
+  @ViewChild(SearchPageComponent) private searchPage?: SearchPageComponent<AslRecord>;
 
-  constructor(
-    private readonly http: HttpClient,
-    private readonly i18nPropertiesService: I18nPropertiesService
-  ) {}
+  readonly filters: SearchFilterField[] = [
+    { key: 'id', labelKey: 'asl.filter.id', type: 'number' },
+    { key: 'code', labelKey: 'asl.filter.code', type: 'text' },
+    { key: 'name', labelKey: 'asl.filter.name', type: 'text' },
+    { key: 'regionCode', labelKey: 'patients.field.region', type: 'text' },
+    { key: 'provinceId', labelKey: 'patients.field.province', type: 'text' },
+    { key: 'imported', labelKey: 'hospital.filter.imported', type: 'select', options: [
+      { value: 'all', labelKey: 'hospital.filter.status.all' },
+      { value: 'imported', labelKey: 'hospital.filter.status.imported' },
+      { value: 'notImported', labelKey: 'hospital.filter.status.notImported' }
+    ] }
+  ];
+
+  readonly columns: SearchResultColumn<AslRecord>[] = [
+    { key: 'codiceAzienda', labelKey: 'asl.column.code' },
+    { key: 'denominazioneAzienda', labelKey: 'asl.column.name' },
+    { key: 'regioneDescrizione', labelKey: 'asl.column.regionDescription', formatter: (row) => row.regioneDescrizione || row.codiceRegione || '-' },
+    { key: 'provinciaDescrizione', labelKey: 'asl.column.provinceDescription' },
+    { key: 'anno', labelKey: 'asl.column.year' },
+    { key: 'indirizzo', labelKey: 'asl.column.address' },
+    { key: 'email', labelKey: 'asl.column.email' },
+    { key: 'telefono', labelKey: 'asl.column.phone' },
+    { key: 'action', labelKey: 'search.actions', formatter: (row) => row.imported ? 'Disassocia' : 'Associa', action: (row) => row.imported ? 'secondary' : 'primary' },
+    { key: 'referents', labelKey: 'asl.action.manageReferents', formatter: () => 'Referenti', action: () => 'secondary', visible: (row) => row.imported }
+  ];
+
+  referentsAsl: AslRecord | null = null;
+  referents: Referent[] = [];
+  referentsBusy = false;
+  translations: Record<string, string> = {};
+  newReferent: Referent = this.emptyReferent();
+  editingReferentId: number | null = null;
+
+  readonly fetchResults = (filters: Record<string, string>): Observable<AslRecord[]> =>
+    this.http.get<AslRecord[]>(`${environment.apiBaseUrl}/asl/overview`, { params: filters }).pipe(
+      map((records) => records.filter((row) => this.matchesFilters(row, filters)))
+    );
+
+  constructor(private readonly http: HttpClient, private readonly i18nPropertiesService: I18nPropertiesService) {}
 
   ngOnInit(): void {
-    this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations: Record<string, string>) => {
+    this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations) => {
       this.translations = translations;
-      this.loadOverview();
-      this.loadRegions();
     });
+  }
+
+  onAction(event: { column: SearchResultColumn<AslRecord>; event: SearchPageActionEvent<AslRecord> }): void {
+    const row = event.event.row;
+    if (event.column.key === 'referents') {
+      this.openReferents(row);
+      return;
+    }
+    const request = row.imported
+      ? this.http.delete(`${environment.apiBaseUrl}/asl/${row.id}`)
+      : this.http.post(`${environment.apiBaseUrl}/asl/import`, { sourceIds: [row.id] });
+    request.subscribe(() => this.searchPage?.reload(false));
   }
 
   t(key: string): string {
     return this.translations[key] ?? key;
   }
 
-  loadOverview(): void {
-    // FIXME Francesco: usare sempre environment.apiBaseUrl per le API frontend; non introdurre percorsi assoluti /api.
-    this.http.get<AslRecord[]>(`${environment.apiBaseUrl}/asl/overview`).subscribe({
-      next: (records: AslRecord[]) => {
-        this.allAslRecords = records;
-        // reset paging when new data arrives
-        this.currentPage = 1;
-        // try to fill missing province names from Ticket if backend did not resolve them
-        this.resolveMissingProvinces();
+  openReferents(asl: AslRecord): void {
+    this.referentsAsl = asl;
+    this.referentsBusy = true;
+    this.http.get<Referent[]>(`${environment.apiBaseUrl}/asl/${asl.id}/referents`).subscribe({
+      next: (referents) => {
+        this.referents = referents;
+        this.referentsBusy = false;
       },
-      error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'asl.messages.loadError');
+      error: () => {
+        this.referents = [];
+        this.referentsBusy = false;
       }
     });
   }
 
-  filteredRecords(): AslRecord[] {
-    return this.allAslRecords.filter((asl) => {
-      if (this.filters.id && asl.id !== Number(this.filters.id)) {
-        return false;
-      }
-      if (this.filters.code && !asl.codiceAzienda.toLowerCase().includes(this.filters.code.toLowerCase())) {
-        return false;
-      }
-      if (this.filters.name && !asl.denominazioneAzienda.toLowerCase().includes(this.filters.name.toLowerCase())) {
-        return false;
-      }
-      if (this.filters.imported === 'imported' && !asl.imported) {
-        return false;
-      }
-      if (this.filters.imported === 'notImported' && asl.imported) {
-        return false;
-      }
-      if (this.filters.regionCode) {
-        const code = this.padRegionCode(String(asl.codiceRegione ?? ''));
-        if (code !== String(this.filters.regionCode)) {
-          return false;
-        }
-      }
-      if (this.filters.provinceId && String(asl.provinciaId ?? '') !== String(this.filters.provinceId)) {
-        return false;
-      }
-      return true;
-    });
+  closeReferents(): void {
+    this.referentsAsl = null;
+    this.referents = [];
+    this.cancelEdit();
   }
 
-  padRegionCode(codeOrId: string | number): string {
-    const s = String(codeOrId ?? '').trim();
-    if (s.length === 0) return s;
-    return s.padStart(2, '0');
-  }
-
-  formatRegion(asl: AslRecord): string {
-    const rawCode = String(asl.codiceRegione ?? '').trim();
-    const code = rawCode ? this.padRegionCode(rawCode) : '';
-    const descFromRecord = asl.regioneDescrizione?.trim();
-    if (descFromRecord && code) return `${descFromRecord} (${code})`;
-    // try to decode region name from loaded regions list by matching regionCode
-    if (rawCode) {
-      const r = this.regions.find((x) => String(x.regionCode) === rawCode || String(this.padRegionCode(x.regionCode ?? '')) === code);
-      if (r) return `${r.name} (${this.padRegionCode(r.regionCode ?? r.id)})`;
+  editReferent(referent: Referent): void {
+    if (referent.id === undefined) {
+      return;
     }
-    if (descFromRecord) return descFromRecord;
-    if (code) return `(${code})`;
-    return '-';
+    this.editingReferentId = referent.id;
+    this.newReferent = { ...referent };
   }
 
-  paginatedRecords(): AslRecord[] {
-    const list = this.tableFilteredRecords();
-    const start = (this.currentPage - 1) * this.pageSize;
-    return list.slice(start, start + this.pageSize);
+  cancelEdit(): void {
+    this.editingReferentId = null;
+    this.newReferent = this.emptyReferent();
   }
 
-  get totalPages(): number {
-    return Math.max(1, Math.ceil(this.tableFilteredRecords().length / this.pageSize));
-  }
-
-  search(): void {
-    this.currentPage = 1;
-  }
-
-  resetFilters(): void {
-    this.filters = { id: '', code: '', name: '', imported: 'all', regionId: '', regionCode: '', provinceId: '' };
-    this.provinces = [];
-    this.currentPage = 1;
-  }
-
-  closeTableSearch(): void {
-    this.tableSearchText = '';
-    this.showTableSearch = false;
-    this.currentPage = 1;
-  }
-
-  importRow(asl: AslRecord): void {
-    // FIXME Francesco: usare sempre environment.apiBaseUrl; /api assoluto non rispetta il base path di deploy.
-    this.http.post<AslRecord[]>(`${environment.apiBaseUrl}/asl/import`, { sourceIds: [asl.id] }).subscribe({
-      next: () => {
-        this.showMessage('asl.messages.associateSuccess', 'success');
-        this.loadOverview();
-      },
-      error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'asl.messages.associateError');
-      }
-    });
-  }
-
-  disassociateRow(asl: AslRecord): void {
-    // FIXME Francesco: usare sempre environment.apiBaseUrl; /api assoluto non rispetta il base path di deploy.
-    this.http.delete<void>(`${environment.apiBaseUrl}/asl/${asl.id}`).subscribe({
-      next: () => {
-        this.showMessage('asl.messages.disassociateSuccess', 'success');
-        this.loadOverview();
-      },
-      error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'asl.messages.disassociateError');
-      }
-    });
-  }
-
-  private showMessage(messageKey: string, type: 'success' | 'error'): void {
-    this.message = this.t(messageKey);
-    this.messageType = type;
-    window.setTimeout(() => {
-      this.message = '';
-    }, 4000);
-  }
-
-  private showErrorMessage(error: { error?: ProblemDetailPayload } | undefined, fallbackKey: string): void {
-    const detail = error?.error?.detail?.trim() || error?.error?.message?.trim();
-    this.message = detail || this.t(fallbackKey);
-    this.messageType = 'error';
-    window.setTimeout(() => {
-      this.message = '';
-    }, 6000);
-  }
-
-  // region/province helpers
-  private loadRegions(): void {
-    this.http.get<RegionOption[]>(`${environment.apiBaseUrl}/geography/regions`).subscribe({
-      next: (regions) => {
-        this.regions = (regions ?? []).map((region) => ({
-          ...region,
-          regionCode: this.resolveRegionCode(region)
-        }));
-      },
-      error: () => {
-        // ignore silently for filters
-      }
-    });
-  }
-
-  private loadProvinces(regionId: number): void {
-    this.http.get<Array<{ id: number; name: string }>>(`${environment.apiBaseUrl}/geography/provinces/by-region/${regionId}`).subscribe({
-      next: (provinces) => (this.provinces = provinces),
-      error: () => {
-        // ignore silently
-      }
-    });
-  }
-
-  /**
-   * When overview records arrive some rows may miss provinciaDescrizione (backend could not resolve it).
-   * Try to resolve missing province names by fetching province by id from Ticket and patch the records.
-   */
-  private resolveMissingProvinces(): void {
-    const missingIds = Array.from(new Set(this.allAslRecords
-      .map(r => r.provinciaId)
-      .filter(id => id != null && !(this.provinces || []).some(p => String(p.id) === String(id)))));
-    if (missingIds.length === 0) return;
-
-    missingIds.forEach((pid) => {
-      // fetch province details and apply to records and select list
-      this.http.get<{ id: number; name: string }>(`${environment.apiBaseUrl}/geography/provinces/${pid}`).subscribe({
-        next: (prov) => {
-          if (!prov) return;
-          // add to provinces list if not present
-          if (!this.provinces.some(p => String(p.id) === String(prov.id))) {
-            this.provinces.push({ id: prov.id, name: prov.name });
-          }
-          // patch matching ASL records
-          this.allAslRecords.forEach((r) => {
-            if (r.provinciaId != null && String(r.provinciaId) === String(prov.id) && !r.provinciaDescrizione) {
-              r.provinciaDescrizione = prov.name;
-            }
-          });
-        },
-        error: () => {
-          // ignore
-        }
+  saveReferent(): void {
+    if (!this.referentsAsl) {
+      return;
+    }
+    this.referentsBusy = true;
+    const request = this.editingReferentId === null
+      ? this.http.post<Referent[]>(`${environment.apiBaseUrl}/asl/${this.referentsAsl.id}/referents`, this.newReferent)
+      : this.http.put<Referent[]>(`${environment.apiBaseUrl}/asl/${this.referentsAsl.id}/referents/${this.editingReferentId}`, {
+        ...this.newReferent,
+        id: this.editingReferentId
       });
+    request.subscribe({
+      next: (referents) => {
+        this.referents = referents;
+        this.cancelEdit();
+        this.referentsBusy = false;
+      },
+      error: () => {
+        this.referentsBusy = false;
+      }
     });
   }
 
-  onRegionChange(regionId: string | number | null | undefined): void {
-    const normalizedRegionId = String(regionId ?? '').trim();
-    this.filters.regionId = normalizedRegionId;
-    this.filters.provinceId = '';
-    this.provinces = [];
-    this.currentPage = 1;
-    // set regionCode for filtering using region.regionCode returned by API
-    const sel = this.regions.find((r) => String(r.id) === normalizedRegionId);
-    const resolvedRegionCode = sel ? this.resolveRegionCode(sel) : '';
-    this.filters.regionCode = resolvedRegionCode ? this.padRegionCode(resolvedRegionCode) : '';
-    if (normalizedRegionId) {
-      this.loadProvinces(Number(normalizedRegionId));
+  removeReferent(referent: Referent): void {
+    if (!this.referentsAsl || referent.id === undefined) {
+      return;
     }
-  }
-
-  toSelectValue(value: string | number | null | undefined): string {
-    return value == null ? '' : String(value);
-  }
-
-  private resolveRegionCode(region: RegionOption): string {
-    const raw = String(region.regionCode ?? region.code ?? '').trim();
-    if (raw) {
-      return this.padRegionCode(raw);
-    }
-    return this.padRegionCode(region.id);
-  }
-
-  // pagination actions
-  goToPage(n: number): void {
-    if (n < 1) n = 1;
-    if (n > this.totalPages) n = this.totalPages;
-    this.currentPage = n;
-  }
-
-  trackById(_: number, asl: AslRecord): number {
-    return asl.id;
-  }
-
-  private tableFilteredRecords(): AslRecord[] {
-    const normalizedSearch = this.tableSearchText.trim().toLowerCase();
-    if (!normalizedSearch) {
-      return this.filteredRecords();
-    }
-
-    return this.filteredRecords().filter((asl) => {
-      const haystack = [
-        String(asl.id),
-        asl.codiceAzienda,
-        asl.denominazioneAzienda,
-        this.formatRegion(asl),
-        asl.provinciaDescrizione ?? '',
-        String(asl.anno ?? ''),
-        asl.indirizzo ?? '',
-        asl.email ?? '',
-        asl.telefono ?? ''
-      ].join(' ').toLowerCase();
-      return haystack.includes(normalizedSearch);
+    this.referentsBusy = true;
+    this.http.delete(`${environment.apiBaseUrl}/asl/${this.referentsAsl.id}/referents/${referent.id}`).subscribe({
+      next: () => {
+        this.referents = this.referents.filter((item) => item.id !== referent.id);
+        this.referentsBusy = false;
+      },
+      error: () => {
+        this.referentsBusy = false;
+      }
     });
+  }
+
+  private emptyReferent(): Referent {
+    return { firstName: '', lastName: '', role: '', phone: '', email: '', note: '' };
+  }
+
+  private matchesFilters(row: AslRecord, filters: Record<string, string>): boolean {
+    return (!filters['id'] || row.id === Number(filters['id']))
+      && (!filters['code'] || (row.codiceAzienda || '').toLowerCase().includes(filters['code'].toLowerCase()))
+      && (!filters['name'] || (row.denominazioneAzienda || '').toLowerCase().includes(filters['name'].toLowerCase()))
+      && (!filters['imported'] || filters['imported'] === 'all' || (filters['imported'] === 'imported' ? row.imported : !row.imported));
   }
 }

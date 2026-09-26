@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
 import { I18nPropertiesService } from '../core/i18n-properties.service';
@@ -9,7 +9,8 @@ const AUTO_DISMISS_DELAY_MS = 4000;
 
 export interface SearchOption {
   value: string;
-  labelKey: string;
+  labelKey?: string;
+  label?: string;
 }
 
 export interface SearchFilterField {
@@ -23,6 +24,8 @@ export interface SearchResultColumn<T = any> {
   key: string;
   labelKey: string;
   formatter?: (row: T) => string;
+  action?: (row: T) => 'primary' | 'secondary' | null;
+  visible?: (row: T) => boolean;
 }
 
 export interface SearchPageActionEvent<T = any> {
@@ -30,15 +33,19 @@ export interface SearchPageActionEvent<T = any> {
   row: T;
 }
 
+export interface SearchFilterChangeEvent {
+  key: string;
+  value: string;
+}
+
 @Component({
   selector: 'app-search-page',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  styleUrls: ['./search-page.component.css'],
   template: `
     <section class="search-page modern-search">
-      <div class="search-header">
-        <div>
+      <div class="search-header dashboard-header">
+        <div class="asl-page-heading">
           <h2>{{ translate(titleKey) }}</h2>
           <p>{{ translate(subtitleKey) }}</p>
         </div>
@@ -80,10 +87,11 @@ export interface SearchPageActionEvent<T = any> {
               *ngIf="field.type === 'select'"
               [(ngModel)]="filterModel[field.key]"
               [name]="field.key"
+              (ngModelChange)="filterChanged.emit({ key: field.key, value: $event ?? '' })"
             >
               <option value=""></option>
               <option *ngFor="let option of field.options ?? []" [value]="option.value">
-                {{ translate(option.labelKey) }}
+                {{ option.label ? option.label : translate(option.labelKey || '') }}
               </option>
             </select>
           </label>
@@ -135,16 +143,30 @@ export interface SearchPageActionEvent<T = any> {
           <thead>
             <tr>
               <th>{{ translate('common.id') }}</th>
-              <th *ngFor="let column of columns">{{ translate(column.labelKey) }}</th>
+              <th *ngFor="let column of displayColumns">
+                {{ translate(column.labelKey) }}
+              </th>
               <th *ngIf="hasActions">{{ translate('search.actions') }}</th>
             </tr>
           </thead>
 
           <tbody>
-            <tr *ngFor="let row of filteredResults()">
+            <tr *ngFor="let row of pagedResults()">
               <td>{{ getRowId(row) }}</td>
-              <td *ngFor="let column of columns">{{ getCellValue(column, row) }}</td>
+              <td *ngFor="let column of displayColumns">{{ getCellValue(column, row) }}</td>
               <td *ngIf="hasActions" class="actions">
+                <ng-container *ngTemplateOutlet="rowActionsTemplate; context: { $implicit: row }"></ng-container>
+                <button
+                  *ngFor="let column of actionColumns"
+                  [hidden]="column.visible && !column.visible(row)"
+                  class="btn btn-sm"
+                  [class.btn-primary]="column.action?.(row) === 'primary'"
+                  [class.btn-secondary]="column.action?.(row) === 'secondary'"
+                  type="button"
+                  (click)="actionColumn.emit({ column, event: toActionEvent(row) })"
+                >
+                  {{ getCellValue(column, row) }}
+                </button>
                 <button *ngIf="showViewAction" class="icon-btn" type="button" (click)="viewAction.emit(toActionEvent(row))" [title]="translate('search.action.view')">
                   <span class="icon">👁️</span>
                 </button>
@@ -163,8 +185,12 @@ export interface SearchPageActionEvent<T = any> {
           <p class="empty-state">{{ translate(emptyStateKey) }}</p>
         </ng-template>
 
-        <div class="search-pagination" *ngIf="results.length > 0">
-          <span>{{ translate('search.pagination.summary') }}</span>
+        <div class="search-pagination asl-pagination" *ngIf="filteredResults().length > 0">
+          <span class="asl-pagination-count">{{ pageEnd() }} di {{ filteredResults().length }} Pag {{ currentPage + 1 }}</span>
+          <div class="asl-pagination-buttons">
+            <button class="btn btn-outline asl-pagination-button" type="button" (click)="currentPage = currentPage - 1" [disabled]="currentPage === 0">&lt;</button>
+            <button class="btn btn-outline asl-pagination-button" type="button" (click)="currentPage = currentPage + 1" [disabled]="currentPage >= pageCount() - 1">&gt;</button>
+          </div>
         </div>
       </div>
     </section>
@@ -186,11 +212,14 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
   @Input() showEditAction = true;
   @Input() showDeleteAction = false;
   @Input() initialFilters: Record<string, string> = {};
+  @Input() rowActionsTemplate: TemplateRef<{ $implicit: T }> | null = null;
 
   @Output() readonly createAction = new EventEmitter<void>();
   @Output() readonly viewAction = new EventEmitter<SearchPageActionEvent<T>>();
   @Output() readonly editAction = new EventEmitter<SearchPageActionEvent<T>>();
   @Output() readonly deleteAction = new EventEmitter<SearchPageActionEvent<T>>();
+  @Output() readonly actionColumn = new EventEmitter<{ column: SearchResultColumn<T>; event: SearchPageActionEvent<T> }>();
+  @Output() readonly filterChanged = new EventEmitter<SearchFilterChangeEvent>();
 
   results: T[] = [];
   filterModel: Record<string, string> = {};
@@ -200,6 +229,10 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
   showFilters = true;
   showTableSearch = false;
   tableSearchText = '';
+  pageSize = 20;
+  currentPage = 0;
+  sortKey = '';
+  sortDirection: 'asc' | 'desc' = 'asc';
 
   private readonly subscriptions = new Subscription();
   private messageTimeoutId: number | null = null;
@@ -228,7 +261,15 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
   }
 
   get hasActions(): boolean {
-    return this.showViewAction || this.showEditAction || this.showDeleteAction;
+    return this.showViewAction || this.showEditAction || this.showDeleteAction || this.rowActionsTemplate !== null || this.actionColumns.length > 0;
+  }
+
+  get actionColumns(): SearchResultColumn<T>[] {
+    return this.columns.filter((column) => column.action !== undefined);
+  }
+
+  get displayColumns(): SearchResultColumn<T>[] {
+    return this.columns.filter((column) => column.action === undefined);
   }
 
   translate(key: string): string {
@@ -240,6 +281,7 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
       this.fetchResults(this.buildSearchFilters()).subscribe({
         next: (results) => {
           this.results = results;
+          this.currentPage = 0;
           if (showFeedback) {
             this.showExternalMessage(this.translate(this.searchSuccessKey));
           }
@@ -262,17 +304,48 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
 
   filteredResults(): T[] {
     const normalizedSearch = this.tableSearchText.trim().toLowerCase();
-    if (!normalizedSearch) {
-      return this.results;
-    }
-
-    return this.results.filter((row) => {
+    const filtered = !normalizedSearch ? this.results : this.results.filter((row) => {
       const haystack = [
         String(this.getRowId(row)),
         ...this.columns.map((column) => this.getCellValue(column, row))
       ].join(' ').toLowerCase();
       return haystack.includes(normalizedSearch);
     });
+    if (!this.sortKey) {
+      return filtered;
+    }
+    return [...filtered].sort((first, second) => {
+      const left = this.getCellValue(this.columns.find((column) => column.key === this.sortKey)!, first).toLocaleLowerCase();
+      const right = this.getCellValue(this.columns.find((column) => column.key === this.sortKey)!, second).toLocaleLowerCase();
+      return left.localeCompare(right) * (this.sortDirection === 'asc' ? 1 : -1);
+    });
+  }
+
+  pagedResults(): T[] {
+    const start = this.currentPage * this.pageSize;
+    return this.filteredResults().slice(start, start + this.pageSize);
+  }
+
+  pageCount(): number {
+    return Math.max(1, Math.ceil(this.filteredResults().length / this.pageSize));
+  }
+
+  pageStart(): number {
+    return this.filteredResults().length === 0 ? 0 : this.currentPage * this.pageSize + 1;
+  }
+
+  pageEnd(): number {
+    return Math.min((this.currentPage + 1) * this.pageSize, this.filteredResults().length);
+  }
+
+  toggleSort(key: string): void {
+    if (this.sortKey === key) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortKey = key;
+      this.sortDirection = 'asc';
+    }
+    this.currentPage = 0;
   }
 
   getRowId(row: T): string | number {

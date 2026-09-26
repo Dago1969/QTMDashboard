@@ -1,11 +1,13 @@
 :host { display:block }
-.sortable-table-card { background: #fff; border-radius: 8px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.sortable-table-card { background: #fff; border-radius: 12px; padding: 0; box-shadow: 0 1px 6px rgba(16,24,40,0.04); overflow: hidden; }
 table.search-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; padding: 10px; font-weight: 600; cursor: default }
+th { text-align: left; padding: 1rem 1.25rem; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; color: #475569; font-weight: 600; cursor: default; white-space: nowrap; background: #fff; border-bottom: 1px solid #f1f5f9; }
 th.sortable { cursor: pointer }
 th .sort-indicator { margin-left: 8px }
-td { padding: 10px; border-top: 1px solid #eef2f6 }
+td { padding: 1rem 1.25rem; color: #334155; font-weight: 500; border-top: 1px solid #f1f5f9; vertical-align: middle; }
 .asl-empty-cell { padding: 24px; text-align: center }
-.asl-pagination { display:flex; justify-content:flex-end; align-items:center }
+.asl-pagination { display:flex; justify-content:flex-end; align-items:center; gap: 14px; padding: 16px 20px; }
 .asl-pagination-text { margin-right: 12px }
-.asl-pagination-buttons .asl-pagination-button { border-radius: 8px }
+.asl-pagination-count { color: #5f7596; font-weight: 600; white-space: nowrap; }
+.asl-pagination-buttons { display: inline-flex; gap: 8px; }
+.asl-pagination-buttons .asl-pagination-button { min-width: 36px; width: 36px; height: 36px; padding: 0; border-radius: 50%; background: #465681; border-color: #465681; color: #fff; }

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qtm.commonlib.dto.ASLDto;
 import com.qtm.commonlib.dto.ASLOverviewDto;
+import com.qtm.commonlib.dto.ReferentDto;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.mapper.ASLMapper;
 import com.qtm.dashboard.asl.repository.ASLRepository;
@@ -111,27 +113,34 @@ public class ASLService {
 //                .toList();
 //    }
     
-    public List<ASLOverviewDto> findAllWithImportStatus(String regionCode) {
-        log.info("[ASLService] findAllWithImportStatus - regionCode={}", regionCode);
-
-        // 1. Recupero entità locali da DB
-        List<ASLEntity> localAsls;
-        if (regionCode != null && !regionCode.isBlank()) {
-            localAsls = aslRepository.findByCodiceRegione(regionCode);
-        } else {
-            localAsls = aslRepository.findAll();
+        @Transactional(readOnly = true)
+        public List<ASLOverviewDto> findAllWithImportStatus() {
+        return findAllWithImportStatus(null);
         }
 
-        // 2. Mappatura in ASLOverviewDto
-        return localAsls.stream()
-                .map(entity -> ASLOverviewDto.builder()
-                        .aslId(entity.getId())                           // id -> aslId
-                        .asl(entity.getDenominazioneAzienda())          // denominazioneAzienda -> asl
-                        .codiceAsl(entity.getCodiceAzienda())            // codiceAzienda -> codiceAsl
-                        .codiceRegione(entity.getCodiceRegione())
-                        .imported(true)
-                        .build())
-                .toList();
+        @Transactional(readOnly = true)
+        public List<ASLOverviewDto> findAllWithImportStatus(String regionCode) {
+        log.info("[ASLService] findAllWithImportStatus - regionCode={}", regionCode);
+
+        List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
+        Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
+            .filter(entity -> entity.getId() != null)
+            .collect(Collectors.toMap(ASLEntity::getId, entity -> entity, (left, right) -> left));
+
+        String normalizedFilter = normalizeRegionCode(regionCode);
+        List<ASLDto> filteredSourceAsls = sourceAsls.stream()
+            .filter(source -> normalizedFilter == null
+                || normalizedFilter.equals(normalizeRegionCode(source.getCodiceRegione())))
+            .toList();
+        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> provinceMap =
+            loadProvincesById(filteredSourceAsls);
+        Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap =
+            loadRegionsByCode(filteredSourceAsls);
+
+        return filteredSourceAsls.stream()
+            .map(source -> toOverviewDto(source, localAslMap.get(source.getId()),
+                provinceMap.get(source.getProvinceId()), regionMap))
+            .toList();
     }
 
         /**
@@ -164,9 +173,12 @@ public class ASLService {
         var resolvedRegion = (ticketRegion != null) ? ticketRegion : (regionFromCode != null ? regionFromCode : (provinceRegionMatchesSource ? provinceRegion : null));
         return ASLOverviewDto.builder()
             .id(source.getId())
+            .aslId(source.getId())
             .anno(source.getAnno())
             .codiceAzienda(source.getCodiceAzienda())
+            .codiceAsl(source.getCodiceAzienda())
             .denominazioneAzienda(source.getDenominazioneAzienda())
+            .asl(source.getDenominazioneAzienda())
             .codiceRegione(source.getCodiceRegione())
             .provinciaId(resolvedProvinceId)
             .provinciaDescrizione(resolvedProvinceName)
@@ -224,6 +236,72 @@ public class ASLService {
         }
         entity.setReferentsJson(aslMapper.dtoToEntity(dto).getReferentsJson());
         return aslMapper.entityToDto(aslRepository.save(entity));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReferentDto> findReferents(Long aslId) {
+        return aslRepository.findById(Objects.requireNonNull(aslId, "ASL id mancante"))
+                .map(entity -> aslMapper.readReferents(entity.getReferentsJson()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ASL non associata: " + aslId));
+    }
+
+    @Transactional
+    public List<ReferentDto> addReferent(Long aslId, ReferentDto referent) {
+        if (referent == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Referente mancante");
+        }
+        ASLEntity entity = findAssociatedEntity(aslId);
+        List<ReferentDto> referents = new ArrayList<>(aslMapper.readReferents(entity.getReferentsJson()));
+        Long nextId = referents.stream()
+                .map(ReferentDto::getId)
+                .filter(Objects::nonNull)
+                .max(Long::compareTo)
+                .map(id -> id + 1)
+                .orElse(1L);
+        ReferentDto savedReferent = referent.toBuilder()
+                .id(referent.getId() == null ? nextId : referent.getId())
+                .build();
+        referents.add(savedReferent);
+        entity.setReferentsJson(aslMapper.writeReferents(referents));
+        aslRepository.save(entity);
+        return referents;
+    }
+
+    @Transactional
+    public List<ReferentDto> updateReferent(Long aslId, Long referentId, ReferentDto referent) {
+        if (referent == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Referente mancante");
+        }
+        ASLEntity entity = findAssociatedEntity(aslId);
+        List<ReferentDto> referents = new ArrayList<>(aslMapper.readReferents(entity.getReferentsJson()));
+        int referentIndex = IntStream.range(0, referents.size())
+                .filter(index -> Objects.equals(referents.get(index).getId(), referentId))
+                .findFirst()
+                .orElse(-1);
+        if (referentIndex < 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Referente non associato all'ASL: " + referentId);
+        }
+        referents.set(referentIndex, referent.toBuilder().id(referentId).build());
+        entity.setReferentsJson(aslMapper.writeReferents(referents));
+        aslRepository.save(entity);
+        return referents;
+    }
+
+    @Transactional
+    public void removeReferent(Long aslId, Long referentId) {
+        ASLEntity entity = findAssociatedEntity(aslId);
+        List<ReferentDto> referents = new ArrayList<>(aslMapper.readReferents(entity.getReferentsJson()));
+        boolean removed = referents.removeIf(referent -> Objects.equals(referent.getId(), referentId));
+        if (!removed) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Referente non associato all'ASL: " + referentId);
+        }
+        entity.setReferentsJson(aslMapper.writeReferents(referents));
+        aslRepository.save(entity);
+    }
+
+    private ASLEntity findAssociatedEntity(Long aslId) {
+        return aslRepository.findById(Objects.requireNonNull(aslId, "ASL id mancante"))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ASL non associata: " + aslId));
     }
 
     @Transactional

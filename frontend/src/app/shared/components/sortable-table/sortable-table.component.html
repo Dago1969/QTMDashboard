@@ -3,16 +3,16 @@
     <table class="search-table asl-search-table hospital-search-table">
       <thead>
         <tr>
-          <th *ngFor="let col of columns" (click)="toggleSort(col)" [class.sortable]="col.sortable">
+          <th *ngFor="let col of columns" (click)="toggleSort(col)" [class.sortable]="col.sortable" [attr.aria-sort]="currentSort.active === col.key ? (currentSort.direction === 'asc' ? 'ascending' : currentSort.direction === 'desc' ? 'descending' : 'none') : 'none'">
             <span class="col-label">{{ col.label }}</span>
-            <span class="sort-indicator">{{ sortIndicator(col) }}</span>
+            <span class="sort-indicator" aria-hidden="true">{{ sortIndicator(col) }}</span>
           </th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let row of data; trackBy: trackByIndex">
           <td *ngFor="let col of columns">
-            <ng-container *ngIf="!col.customTemplate">{{ row[col.key] ?? '-' }}</ng-container>
+            <ng-container *ngIf="!col.customTemplate">{{ displayValue(row, col) }}</ng-container>
             <ng-container *ngIf="col.customTemplate" [ngTemplateOutlet]="col.customTemplate" [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
           </td>
         </tr>
@@ -25,7 +25,8 @@
 
   <div class="asl-table-footer" *ngIf="totalItems > 0">
     <div class="search-pagination asl-pagination">
-      <span class="asl-pagination-text">Pag {{ page + 1 }} di {{ totalPages }}</span>
+      <span class="asl-pagination-count">{{ Math.min((page + 1) * pageSize, totalItems) }} di {{ totalItems }}</span>
+      <span class="asl-pagination-text">Pag {{ page + 1 }}</span>
       <div class="asl-pagination-buttons">
         <button class="btn btn-outline asl-pagination-button" type="button" (click)="prevPage()" [disabled]="page <= 0">&lt;</button>
         <button class="btn btn-outline asl-pagination-button" type="button" (click)="nextPage(totalPages)" [disabled]="page + 1 >= totalPages">&gt;</button>

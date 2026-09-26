@@ -19,3 +19,11 @@
 .mb-4 { margin-bottom:16px }
 .p-4 { padding:16px }
 .w-50 { width:50% }
+.tickets-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: end; }
+.tickets-filter-field { min-width: 0; }
+.tickets-filter-field .form-label { display: block; margin-bottom: 6px; color: #495057; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.tickets-filter-field .custom-input { width: 100%; min-height: 42px; box-sizing: border-box; border: 1px solid #d5e2ee; border-radius: 10px; background: #f4f8fc; color: #334155; }
+.tickets-filter-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; }
+.tickets-filter-actions .btn { min-width: 110px; }
+@media (max-width: 900px) { .tickets-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .tickets-filter-grid { grid-template-columns: 1fr; } .tickets-filter-actions { grid-column: auto; justify-content: stretch; } .tickets-filter-actions .btn { flex: 1; } }

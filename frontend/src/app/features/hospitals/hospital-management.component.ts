@@ -1,15 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Component, ViewChild } from '@angular/core';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { I18nPropertiesService } from '../../core/i18n-properties.service';
-
-interface ProblemDetailPayload {
-  detail?: string;
-  message?: string;
-}
+import { SearchFilterField, SearchPageActionEvent, SearchPageComponent, SearchResultColumn } from '../../shared/search-page.component';
 
 interface HospitalRecord {
   id: number;
@@ -22,566 +16,68 @@ interface HospitalRecord {
   struttura?: string;
   comune?: string;
   siglaProvincia?: string;
-  indirizzo?: string;
-  hospitalTypeId?: number;
   tipoStruttura?: string;
-  aslId?: number;
   imported: boolean;
-  note?: string | null;
-}
-
-interface HospitalImportPayload {
-  id: number;
-  anno?: number;
-  codiceRegione?: string;
-  regione?: string;
-  codiceAsl?: string;
-  asl?: string;
-  codiceStruttura?: string;
-  struttura?: string;
-  comune?: string;
-  siglaProvincia?: string;
-  indirizzo?: string;
-  hospitalTypeId?: number;
-  tipoStruttura?: string;
-  aslId?: number;
 }
 
 @Component({
   selector: 'app-hospital-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, SearchPageComponent],
   template: `
-    <div class="card dashboard-content-card asl-management-shell hospital-management-shell">
-      <div class="dashboard-header">
-        <div class="asl-page-heading">
-          <h2>{{ t('dashboard.menu.hospital') }}</h2>
-          <p>{{ t('hospital.management.subtitle') }}</p>
-        </div>
-        <div class="asl-header-actions hospital-header-actions">
-          <a class="btn btn-primary asl-filter-toggle hospital-upload-link" routerLink="/dashboard/hospitals/import">
-            {{ t('hospital.management.uploadAction') }}
-          </a>
-          <button class="btn btn-outline asl-filter-toggle" type="button" (click)="showFilters = !showFilters">
-            <span class="asl-filter-toggle-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 5H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M5 9H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M7 13H11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            {{ t('asl.actions.filters') }}
-          </button>
-        </div>
-      </div>
-
-      <p class="dashboard-selection-info hospital-management-info">{{ t('hospital.management.detail') }}</p>
-
-      <section *ngIf="showFilters" class="search-filters-panel asl-filters-panel">
-        <div class="asl-filters-grid hospital-filters-grid">
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('hospital.filter.id') }}</span>
-            <input class="asl-filter-input" type="number" [(ngModel)]="filters.id" />
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('hospital.filter.regionCode') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.regionCode" (ngModelChange)="onRegionFilterChange($event)">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let region of regionOptions" [value]="region.code">{{ region.label }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('patients.field.province') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.provinceCode">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let prov of provinceOptionsFiltered" [value]="prov.value">{{ prov.label }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('hospital.filter.aslCode') }}</span>
-            <input class="asl-filter-input" type="text" [(ngModel)]="filters.aslCode" />
-          </label>
-          <label class="asl-filter-field asl-filter-field-wide">
-            <span class="asl-filter-label">{{ t('hospital.filter.name') }}</span>
-            <input class="asl-filter-input" type="text" [(ngModel)]="filters.name" />
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('hospital.filter.code') }}</span>
-            <input class="asl-filter-input" type="text" [(ngModel)]="filters.code" />
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('hospital.filter.type') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.type">
-              <option value="">{{ t('crud.select.all') }}</option>
-              <option *ngFor="let type of typeOptions" [value]="type">{{ type }}</option>
-            </select>
-          </label>
-          <label class="asl-filter-field">
-            <span class="asl-filter-label">{{ t('hospital.filter.imported') }}</span>
-            <select class="asl-filter-input" [(ngModel)]="filters.imported">
-              <option value="all">{{ t('hospital.filter.status.all') }}</option>
-              <option value="imported">{{ t('hospital.filter.status.imported') }}</option>
-              <option value="notImported">{{ t('hospital.filter.status.notImported') }}</option>
-            </select>
-          </label>
-          <div class="asl-filter-actions">
-            <button class="btn btn-primary" type="button" (click)="search()">{{ t('crud.actions.search') }}</button>
-            <button class="btn btn-outline" type="button" (click)="resetFilters()">{{ t('crud.actions.reset') }}</button>
-          </div>
-        </div>
-      </section>
-
-      <div *ngIf="message" class="alert" [class.alert-success]="messageType === 'success'" [class.alert-danger]="messageType === 'error'">
-        {{ message }}
-      </div>
-
-      <section class="modern-table asl-table-panel">
-        <div class="asl-table-toolbar">
-          <div class="asl-table-count">{{ filteredRecords().length }} {{ t('crud.items') }}</div>
-          <button *ngIf="!showTableSearch" class="asl-table-search-trigger" type="button" (click)="showTableSearch = true" [attr.aria-label]="t('search.table.open')" [title]="t('search.table.open')">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.8"/>
-              <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-          </button>
-          <div *ngIf="showTableSearch" class="table-search-input-wrapper asl-table-search-box">
-            <span class="search-icon">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="9" cy="9" r="6.25" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            <input
-              type="text"
-              [(ngModel)]="tableSearchText"
-              [ngModelOptions]="{ standalone: true }"
-              [placeholder]="t('search.table.placeholder')"
-              class="table-search-input"
-            />
-            <button class="close-btn" type="button" (click)="closeTableSearch()" [title]="t('search.table.close')">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 4L12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="table-responsive asl-table-wrapper">
-          <table class="search-table asl-search-table hospital-search-table">
-          <thead>
-            <tr>
-              <th>{{ t('hospital.column.id') }}</th>
-              <th>{{ t('hospital.column.year') }}</th>
-              <th>{{ t('hospital.column.region') }}</th>
-              <th>{{ t('hospital.column.asl') }}</th>
-              <th>{{ t('hospital.column.code') }}</th>
-              <th>{{ t('hospital.column.name') }}</th>
-              <th>{{ t('hospital.column.municipality') }}</th>
-              <th>{{ t('hospital.column.type') }}</th>
-              <th class="asl-actions-column">{{ t('search.actions') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let hospital of paginatedRecords(); trackBy: trackById">
-              <td class="hospital-cell-id">{{ hospital.id }}</td>
-              <td class="hospital-cell-year">{{ hospital.anno ?? '-' }}</td>
-              <td class="hospital-cell-region">{{ formatRegion(hospital) }}</td>
-              <td class="hospital-cell-asl">{{ formatAsl(hospital) }}</td>
-              <td>{{ hospital.codiceStruttura || '-' }}</td>
-              <td class="hospital-cell-name">{{ hospital.struttura || '-' }}</td>
-              <td>{{ formatMunicipality(hospital) }}</td>
-              <td>{{ hospital.tipoStruttura || '-' }}</td>
-              <td class="asl-actions-cell">
-                <button class="btn btn-primary btn-sm" type="button" (click)="importRow(hospital)" *ngIf="!hospital.imported">
-                  {{ t('hospital.action.importRow') }}
-                </button>
-                <button class="btn btn-secondary btn-sm" type="button" (click)="disassociateRow(hospital)" *ngIf="hospital.imported">
-                  {{ t('hospital.action.disassociateRow') }}
-                </button>
-              </td>
-            </tr>
-            <tr *ngIf="paginatedRecords().length === 0">
-              <td class="asl-empty-cell" colspan="8">{{ t('search.noResults') }}</td>
-            </tr>
-          </tbody>
-          </table>
-        </div>
-
-        <div class="asl-table-footer" *ngIf="filteredRecords().length > 0">
-          <div class="search-pagination asl-pagination">
-            <span class="asl-pagination-text">{{ t('asl.pagination.page') }} {{ currentPage }} {{ t('asl.pagination.of') }} {{ totalPages }}</span>
-            <div class="asl-pagination-buttons">
-              <button class="btn btn-outline asl-pagination-button" type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1" [attr.aria-label]="t('asl.pagination.previous')">&lt;</button>
-              <button class="btn btn-outline asl-pagination-button" type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages" [attr.aria-label]="t('asl.pagination.next')">&gt;</button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
+    <app-search-page
+      [titleKey]="'dashboard.menu.hospital'"
+      [subtitleKey]="'hospital.management.subtitle'"
+      [emptyStateKey]="'search.noResults'"
+      [filters]="filters"
+      [columns]="columns"
+      [fetchResults]="fetchResults"
+      [showCreateAction]="false"
+      (actionColumn)="onAction($event)"
+    />
   `
 })
-export class HospitalManagementComponent implements OnInit {
-  filters = {
-    id: '' as string,
-    regionCode: '' as string,
-    provinceCode: '' as string,
-    aslCode: '' as string,
-    code: '' as string,
-    name: '' as string,
-    type: '' as string,
-    imported: 'all' as 'all' | 'imported' | 'notImported'
-  };
-  allHospitalRecords: HospitalRecord[] = [];
-  pageSize = 10;
-  currentPage = 1;
-  showFilters = true;
-  showTableSearch = false;
-  tableSearchText = '';
-  regionOptions: Array<{ code: string; label: string }> = [];
-  regionsRaw: Array<{ id: number; name: string; regionCode?: string; code?: string }> = [];
-  provinces: Array<{ id: number; name: string; sigla?: string; code?: string; regionId?: number }> = [];
-  provinceOptions: Array<{ value: string; label: string; regionId?: number }> = [];
-  provinceOptionsFiltered: Array<{ value: string; label: string; regionId?: number }> = [];
-  typeOptions: string[] = [];
-  translations: Record<string, string> = {};
-  message = '';
-  messageType: 'success' | 'error' = 'success';
+export class HospitalManagementComponent {
+  @ViewChild(SearchPageComponent) private searchPage?: SearchPageComponent<HospitalRecord>;
 
-  constructor(
-    private readonly http: HttpClient,
-    private readonly i18nPropertiesService: I18nPropertiesService
-  ) {}
+  readonly filters: SearchFilterField[] = [
+    { key: 'id', labelKey: 'hospital.filter.id', type: 'number' },
+    { key: 'regionCode', labelKey: 'hospital.filter.regionCode', type: 'text' },
+    { key: 'provinceCode', labelKey: 'patients.field.province', type: 'text' },
+    { key: 'aslCode', labelKey: 'hospital.filter.aslCode', type: 'text' },
+    { key: 'name', labelKey: 'hospital.filter.name', type: 'text' },
+    { key: 'code', labelKey: 'hospital.filter.code', type: 'text' },
+    { key: 'type', labelKey: 'hospital.filter.type', type: 'text' },
+    { key: 'imported', labelKey: 'hospital.filter.imported', type: 'select', options: [
+      { value: 'all', labelKey: 'hospital.filter.status.all' },
+      { value: 'imported', labelKey: 'hospital.filter.status.imported' },
+      { value: 'notImported', labelKey: 'hospital.filter.status.notImported' }
+    ] }
+  ];
 
-  ngOnInit(): void {
-    this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations: Record<string, string>) => {
-      this.translations = translations;
-      // prefer loading reference data (regions/provinces) first so labels are available
-      this.loadRegions();
-      this.loadProvinces();
-      this.loadOverview();
-    });
-  }
+  readonly columns: SearchResultColumn<HospitalRecord>[] = [
+    { key: 'anno', labelKey: 'hospital.column.year' },
+    { key: 'regione', labelKey: 'hospital.column.region', formatter: (row) => row.regione ? `${row.regione} (${row.codiceRegione || ''})` : row.codiceRegione || '-' },
+    { key: 'asl', labelKey: 'hospital.column.asl', formatter: (row) => row.asl ? `${row.asl} (${row.codiceAsl || ''})` : row.codiceAsl || '-' },
+    { key: 'codiceStruttura', labelKey: 'hospital.column.code' },
+    { key: 'struttura', labelKey: 'hospital.column.name' },
+    { key: 'comune', labelKey: 'hospital.column.municipality' },
+    { key: 'tipoStruttura', labelKey: 'hospital.column.type' },
+    { key: 'action', labelKey: 'search.actions', formatter: (row) => row.imported ? 'Disassocia' : 'Associa', action: (row) => row.imported ? 'secondary' : 'primary' }
+  ];
 
-  t(key: string): string {
-    return this.translations[key] ?? key;
-  }
+  readonly fetchResults = (filters: Record<string, string>): Observable<HospitalRecord[]> =>
+    this.http.get<HospitalRecord[]>(`${environment.apiBaseUrl}/hospital/overview`, { params: filters }).pipe(
+      map((records) => records.filter((row) => !filters['imported'] || filters['imported'] === 'all' || (filters['imported'] === 'imported' ? row.imported : !row.imported)))
+    );
 
-  loadOverview(): void {
-    this.http.get<HospitalRecord[]>(`${environment.apiBaseUrl}/hospital/overview`).subscribe({
-      next: (records: HospitalRecord[]) => {
-        this.allHospitalRecords = records;
-        // only build region options from records if we don't have regions from the service
-        if (!this.regionOptions || this.regionOptions.length === 0) {
-          this.regionOptions = this.buildRegionOptions(records);
-        }
-        this.typeOptions = this.buildTypeOptions(records);
-        this.currentPage = 1;
-      },
-      error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'hospital.messages.loadError');
-      }
-    });
-  }
+  constructor(private readonly http: HttpClient) {}
 
-  filteredRecords(): HospitalRecord[] {
-    return this.allHospitalRecords.filter((hospital) => {
-      if (this.filters.id && hospital.id !== Number(this.filters.id)) {
-        return false;
-      }
-      if (this.filters.regionCode && (hospital.codiceRegione || '') !== this.filters.regionCode) {
-        return false;
-      }
-      if (this.filters.aslCode && !(hospital.codiceAsl || '').toLowerCase().includes(this.filters.aslCode.toLowerCase())) {
-        return false;
-      }
-      if (this.filters.code && !(hospital.codiceStruttura || '').toLowerCase().includes(this.filters.code.toLowerCase())) {
-        return false;
-      }
-      if (this.filters.name && !(hospital.struttura || '').toLowerCase().includes(this.filters.name.toLowerCase())) {
-        return false;
-      }
-      if (this.filters.type && (hospital.tipoStruttura || '') !== this.filters.type) {
-        return false;
-      }
-      if (this.filters.imported === 'imported' && !hospital.imported) {
-        return false;
-      }
-      if (this.filters.imported === 'notImported' && hospital.imported) {
-        return false;
-      }
-      // province filter: try to match hospital.siglaProvincia with selected province value
-      if (this.filters.provinceCode) {
-        const selected = this.provinceOptions.find(p => p.value === this.filters.provinceCode);
-        if (selected) {
-          if (!hospital.siglaProvincia || String(hospital.siglaProvincia).toLowerCase() !== String(selected.value).toLowerCase()) {
-            return false;
-          }
-        } else {
-          if (!hospital.siglaProvincia || String(hospital.siglaProvincia).toLowerCase() !== String(this.filters.provinceCode).toLowerCase()) {
-            return false;
-          }
-        }
-      }
-      return true;
-    });
-  }
-
-  search(): void {
-    this.currentPage = 1;
-  }
-
-  resetFilters(): void {
-    this.filters = { id: '', regionCode: '', provinceCode: '', aslCode: '', code: '', name: '', type: '', imported: 'all' };
-    this.currentPage = 1;
-  }
-
-  paginatedRecords(): HospitalRecord[] {
-    const list = this.tableFilteredRecords();
-    const start = (this.currentPage - 1) * this.pageSize;
-    return list.slice(start, start + this.pageSize);
-  }
-
-  get totalPages(): number {
-    return Math.max(1, Math.ceil(this.tableFilteredRecords().length / this.pageSize));
-  }
-
-  closeTableSearch(): void {
-    this.tableSearchText = '';
-    this.showTableSearch = false;
-    this.currentPage = 1;
-  }
-
-  formatRegion(hospital: HospitalRecord): string {
-    if (hospital.regione && hospital.codiceRegione) {
-      return `${hospital.regione} (${hospital.codiceRegione})`;
-    }
-    if (hospital.regione) {
-      return hospital.regione;
-    }
-    if (hospital.codiceRegione) {
-      const label = this.findRegionLabel(hospital.codiceRegione);
-      return label ?? hospital.codiceRegione;
-    }
-    return '-';
-  }
-
-  formatAsl(hospital: HospitalRecord): string {
-    if (hospital.asl && hospital.codiceAsl) {
-      return `${hospital.asl} (${hospital.codiceAsl})`;
-    }
-    if (hospital.asl) {
-      return hospital.asl;
-    }
-    if (hospital.codiceAsl) {
-      return hospital.codiceAsl;
-    }
-    return '-';
-  }
-
-  formatMunicipality(hospital: HospitalRecord): string {
-    if (hospital.comune && hospital.siglaProvincia) {
-      const provLabel = this.findProvinceLabel(hospital.siglaProvincia);
-      return `${hospital.comune} (${provLabel ?? hospital.siglaProvincia})`;
-    }
-    return hospital.comune || hospital.siglaProvincia || '-';
-  }
-
-  goToPage(page: number): void {
-    if (page < 1) {
-      this.currentPage = 1;
-      return;
-    }
-    if (page > this.totalPages) {
-      this.currentPage = this.totalPages;
-      return;
-    }
-    this.currentPage = page;
-  }
-
-  trackById(_: number, hospital: HospitalRecord): number {
-    return hospital.id;
-  }
-
-  importRow(hospital: HospitalRecord): void {
-    const payload: HospitalImportPayload = {
-      id: hospital.id,
-      anno: hospital.anno,
-      codiceRegione: hospital.codiceRegione,
-      regione: hospital.regione,
-      codiceAsl: hospital.codiceAsl,
-      asl: hospital.asl,
-      codiceStruttura: hospital.codiceStruttura,
-      struttura: hospital.struttura,
-      comune: hospital.comune,
-      siglaProvincia: hospital.siglaProvincia,
-      indirizzo: hospital.indirizzo,
-      hospitalTypeId: hospital.hospitalTypeId,
-      tipoStruttura: hospital.tipoStruttura,
-      aslId: hospital.aslId
-    };
-
-    this.http.post<HospitalRecord[]>(`${environment.apiBaseUrl}/hospital/import`, { sourceIds: [hospital.id], hospitals: [payload] }).subscribe({
-      next: () => {
-        this.showMessage('hospital.messages.associateSuccess', 'success');
-        this.loadOverview();
-      },
-      error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'hospital.messages.associateError');
-      }
-    });
-  }
-
-  disassociateRow(hospital: HospitalRecord): void {
-    this.http.delete<void>(`${environment.apiBaseUrl}/hospital/${hospital.id}`).subscribe({
-      next: () => {
-        this.showMessage('hospital.messages.disassociateSuccess', 'success');
-        this.loadOverview();
-      },
-      error: (error: { error?: ProblemDetailPayload }) => {
-        this.showErrorMessage(error, 'hospital.messages.disassociateError');
-      }
-    });
-  }
-
-  // Load regions from Ticket service for filters (keeps parity with ASL management)
-  private loadRegions(): void {
-    this.http.get<Array<{ id: number; name: string; regionCode?: string; code?: string }>>(`${environment.apiBaseUrl}/geography/regions`).subscribe({
-      next: (regions) => {
-        this.regionsRaw = regions ?? [];
-        this.regionOptions = (regions ?? []).map(r => ({ code: String(r.regionCode ?? r.code ?? r.id).padStart(2, '0'), label: r.name }));
-      },
-      error: () => {
-        // ignore silently for filters
-      }
-    });
-  }
-
-  private findRegionLabel(key: string | undefined | null): string | null {
-    if (!key) return null;
-    const k = String(key).trim();
-    const r = this.regionOptions.find(rt => {
-      if (!rt) return false;
-      if (String(rt.code).toLowerCase() === k.toLowerCase()) return true;
-      if (String(rt.code).replace(/^0+/, '') === k.replace(/^0+/, '')) return true;
-      return false;
-    });
-    return r ? r.label + (r.code ? ` (${r.code})` : '') : null;
-  }
-
-  private loadProvinces(): void {
-    this.http.get<Array<{ id: number; name: string; sigla?: string; code?: string; regionId?: number }>>(`${environment.apiBaseUrl}/geography/provinces`).subscribe({
-      next: (provs) => {
-        this.provinces = provs ?? [];
-        this.provinceOptions = (this.provinces ?? []).map(p => ({
-          value: String(p.sigla ?? p.code ?? p.id),
-          label: `${p.name}${p.sigla ? ` (${p.sigla})` : p.code ? ` (${p.code})` : ''}`,
-          regionId: p.regionId
-        }));
-        // initialize filtered list
-        this.provinceOptionsFiltered = [...this.provinceOptions];
-      },
-      error: () => {
-        // ignore silently
-      }
-    });
-  }
-
-  private findRegionIdFromCode(code: string | undefined | null): number | null {
-    if (!code) return null;
-    const k = String(code).trim();
-    const r = this.regionsRaw.find(rr => {
-      const candidate = String(rr.regionCode ?? rr.code ?? rr.id).padStart(2, '0');
-      if (candidate === k) return true;
-      if (candidate.replace(/^0+/, '') === k.replace(/^0+/, '')) return true;
-      return false;
-    });
-    return r ? r.id : null;
-  }
-
-  onRegionFilterChange(regionCode: string): void {
-    const regionId = this.findRegionIdFromCode(regionCode);
-    if (regionId !== null) {
-      this.provinceOptionsFiltered = this.provinceOptions.filter(p => p.regionId === regionId);
-    } else {
-      this.provinceOptionsFiltered = [...this.provinceOptions];
-    }
-    // reset province selection when region changes
-    this.filters.provinceCode = '';
-  }
-
-  private findProvinceLabel(key: string | undefined | null): string | null {
-    if (!key) return null;
-    const k = String(key).trim();
-    const p = this.provinces.find(pr => {
-      if (!pr) return false;
-      if (pr.sigla && String(pr.sigla).toLowerCase() === k.toLowerCase()) return true;
-      if (String(pr.id) === k) return true;
-      if ((pr as any).code && String((pr as any).code) === k) return true;
-      return false;
-    });
-    if (!p) return null;
-    const code = p.sigla ?? String(p.id ?? '');
-    return `${p.name}${code ? ` (${code})` : ''}`;
-  }
-
-  private showMessage(messageKey: string, type: 'success' | 'error'): void {
-    this.message = this.t(messageKey);
-    this.messageType = type;
-    window.setTimeout(() => {
-      this.message = '';
-    }, 4000);
-  }
-
-  private showErrorMessage(error: { error?: ProblemDetailPayload } | undefined, fallbackKey: string): void {
-    const detail = error?.error?.detail?.trim() || error?.error?.message?.trim();
-    this.message = detail || this.t(fallbackKey);
-    this.messageType = 'error';
-    window.setTimeout(() => {
-      this.message = '';
-    }, 6000);
-  }
-
-  private tableFilteredRecords(): HospitalRecord[] {
-    const normalizedSearch = this.tableSearchText.trim().toLowerCase();
-    if (!normalizedSearch) {
-      return this.filteredRecords();
-    }
-
-    return this.filteredRecords().filter((hospital) => {
-      const haystack = [
-        String(hospital.id),
-        String(hospital.anno ?? ''),
-        hospital.codiceRegione ?? '',
-        hospital.regione ?? '',
-        hospital.codiceAsl ?? '',
-        hospital.asl ?? '',
-        hospital.codiceStruttura ?? '',
-        hospital.struttura ?? '',
-        hospital.comune ?? '',
-        hospital.siglaProvincia ?? '',
-        hospital.tipoStruttura ?? ''
-      ].join(' ').toLowerCase();
-      return haystack.includes(normalizedSearch);
-    });
-  }
-
-  private buildRegionOptions(records: HospitalRecord[]): Array<{ code: string; label: string }> {
-    return records
-      .filter((record) => !!record.codiceRegione)
-      .map((record) => ({
-        code: record.codiceRegione as string,
-        label: record.regione ? `${record.regione} (${record.codiceRegione})` : (record.codiceRegione as string)
-      }))
-      .filter((record, index, array) => array.findIndex((candidate) => candidate.code === record.code) === index)
-      .sort((left, right) => left.label.localeCompare(right.label, 'it', { sensitivity: 'base' }));
-  }
-
-  private buildTypeOptions(records: HospitalRecord[]): string[] {
-    return records
-      .map((record) => record.tipoStruttura || '')
-      .filter((type) => !!type)
-      .filter((type, index, array) => array.indexOf(type) === index)
-      .sort((left, right) => left.localeCompare(right, 'it', { sensitivity: 'base' }));
+  onAction(event: { column: SearchResultColumn<HospitalRecord>; event: SearchPageActionEvent<HospitalRecord> }): void {
+    const row = event.event.row;
+    const request = row.imported
+      ? this.http.delete(`${environment.apiBaseUrl}/hospital/${row.id}`)
+      : this.http.post(`${environment.apiBaseUrl}/hospital/import`, { sourceIds: [row.id] });
+    request.subscribe(() => this.searchPage?.reload(false));
   }
 }

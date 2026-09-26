@@ -6,7 +6,9 @@ import { SortableTableComponent, SortColumn } from '../../shared/components/sort
 import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
 import { I18nPropertiesService } from '../../core/i18n-properties.service';
+import { PatientApiService, PatientDto } from '../../core/patient-api.service';
 import { QtmStepModalComponent } from '../../shared/qtm-step-modal.component';
+import { ManagementPageShellComponent } from '../../shared/management-page-shell.component';
 
 interface ProblemDetailPayload {
   detail?: string;
@@ -53,60 +55,62 @@ interface TicketFilterOptions {
   statuses?: string[];
 }
 
+interface PatientFilterOption {
+  value: string;
+  label: string;
+}
+
 /**
  * Elenco ticket letto da QTMTicket con filtri principali server-side e ricerca rapida locale nella pagina corrente.
  */
 @Component({
   selector: 'app-tickets-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, QtmStepModalComponent, SortableTableComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, QtmStepModalComponent, SortableTableComponent, ManagementPageShellComponent],
   styleUrls: ['./tickets-management.component.css'],
   template: `
-    <div class="page-container">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="page-title">{{ t('tickets.search.title') || 'Ricerca Ticket' }}</h1>
-      </div>
+    <app-management-page-shell titleKey="tickets.search.title" subtitleKey="tickets.management.subtitle">
 
-      <div class="card card-custom p-4 mb-4">
+      <section management-page-filters class="card card-custom p-4 mb-4">
         <form [formGroup]="filterForm" (ngSubmit)="onSearch()">
-          <div class="row g-3 align-items-end">
-            <div class="col-md-3">
+          <div class="tickets-filter-grid">
+            <div class="tickets-filter-field">
               <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.realm') }}</label>
               <select formControlName="realm" class="form-select custom-input">
                 <option value="">{{ t('crud.select.all') }}</option>
                 <option *ngFor="let r of realmOptions" [value]="r">{{ r }}</option>
               </select>
             </div>
-            <div class="col-md-3">
+            <div class="tickets-filter-field">
               <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.project') }}</label>
               <select formControlName="project" class="form-select custom-input">
                 <option value="">{{ t('crud.select.all') }}</option>
                 <option *ngFor="let p of projectOptions" [value]="p">{{ p }}</option>
               </select>
             </div>
-            <div class="col-md-3">
+            <div class="tickets-filter-field">
               <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.patient') || 'Paziente' }}</label>
               <select formControlName="patientId" class="form-select custom-input">
                 <option value="">{{ t('crud.select.all') }}</option>
-                <option *ngFor="let p of patientOptions" [value]="p">{{ p }}</option>
+                <option *ngFor="let p of patientOptions" [value]="p.value">{{ p.label }}</option>
               </select>
             </div>
-            <div class="col-md-3">
+            <div class="tickets-filter-field">
               <label class="form-label text-uppercase fs-7 fw-bold">{{ t('tickets.filter.nurse') || 'Infermiere' }}</label>
               <select formControlName="nurseId" class="form-select custom-input">
                 <option value="">{{ t('crud.select.all') }}</option>
                 <option *ngFor="let n of nurseOptions" [value]="n">{{ n }}</option>
               </select>
             </div>
-            <div class="col-md-3 d-flex gap-2">
-              <button type="submit" class="btn btn-primary btn-custom-blue w-50">{{ t('crud.actions.search') }}</button>
-              <button type="button" (click)="onReset()" class="btn btn-outline btn-custom-outline w-50">{{ t('crud.actions.reset') }}</button>
+            <div class="tickets-filter-actions">
+              <button type="submit" class="btn btn-primary btn-custom-blue">{{ t('crud.actions.search') }}</button>
+              <button type="button" (click)="onReset()" class="btn btn-outline btn-custom-outline">{{ t('crud.actions.reset') }}</button>
             </div>
           </div>
         </form>
-      </div>
+      </section>
 
-      <div class="card card-custom p-4">
+      <section management-page-content class="card card-custom p-4">
         <app-sortable-table
           [columns]="tableColumns"
           [data]="tableFilteredRecords()"
@@ -117,10 +121,10 @@ interface TicketFilterOptions {
           (sortChange)="onTableSortChange($event)"
           (pageChange)="loadPage($event)">
         </app-sortable-table>
-      </div>
-    </div>
+      </section>
+    </app-management-page-shell>
 
-        <qtm-step-modal
+    <qtm-step-modal
       *ngIf="selectedTicket"
       [title]="t('tickets.details.title')"
       [step]="1"
@@ -211,7 +215,7 @@ export class TicketsManagementComponent implements OnInit, AfterViewInit {
   pageSize = 20;
   realmOptions: string[] = [];
   projectOptions: string[] = [];
-  patientOptions: string[] = [];
+  patientOptions: PatientFilterOption[] = [];
   nurseOptions: string[] = [];
   statusOptions: string[] = [];
   selectedTicket: TicketRecord | null = null;
@@ -221,7 +225,8 @@ export class TicketsManagementComponent implements OnInit, AfterViewInit {
 
   constructor(
     private readonly http: HttpClient,
-    private readonly i18nPropertiesService: I18nPropertiesService
+    private readonly i18nPropertiesService: I18nPropertiesService,
+    private readonly patientApiService: PatientApiService
   ) {}
 
   // initialize reactive form
@@ -409,13 +414,9 @@ export class TicketsManagementComponent implements OnInit, AfterViewInit {
       next: (response) => {
         this.realmOptions = response.realms ?? [];
         this.projectOptions = response.projects ?? [];
-        this.patientOptions = response.patientIds ?? [];
         this.nurseOptions = response.nurseIds ?? [];
         this.statusOptions = response.statuses ?? [];
-        this.normalizeSelectedFilters();
-        if (loadTicketsAfter) {
-          this.loadPage(0);
-        }
+        this.loadPatientOptions(response.patientIds ?? [], loadTicketsAfter);
       },
       error: (error: { error?: ProblemDetailPayload }) => {
         this.realmOptions = [];
@@ -435,7 +436,7 @@ export class TicketsManagementComponent implements OnInit, AfterViewInit {
     if (this.filters.project && !this.projectOptions.includes(this.filters.project)) {
       this.filters.project = '';
     }
-    if (this.filters.patientId && !this.patientOptions.includes(this.filters.patientId)) {
+    if (this.filters.patientId && !this.patientOptions.some((option) => option.value === this.filters.patientId)) {
       this.filters.patientId = '';
     }
     if (this.filters.nurseId && !this.nurseOptions.includes(this.filters.nurseId)) {
@@ -444,6 +445,47 @@ export class TicketsManagementComponent implements OnInit, AfterViewInit {
     if (this.filters.status && !this.statusOptions.includes(this.filters.status)) {
       this.filters.status = '';
     }
+  }
+
+  private loadPatientOptions(patientIds: string[], loadTicketsAfter: boolean): void {
+    if (patientIds.length === 0) {
+      this.patientOptions = [];
+      this.normalizeSelectedFilters();
+      if (loadTicketsAfter) {
+        this.loadPage(0);
+      }
+      return;
+    }
+
+    this.patientApiService.searchPatients().subscribe({
+      next: (patients: PatientDto[]) => {
+        const patientsById = new Map(patients.map((patient) => [String(patient.id), patient]));
+        this.patientOptions = patientIds.map((patientId) => {
+          const patient = patientsById.get(String(patientId));
+          return {
+            value: String(patientId),
+            label: patient ? this.formatPatientOption(patient, patientId) : String(patientId)
+          };
+        });
+        this.normalizeSelectedFilters();
+        if (loadTicketsAfter) {
+          this.loadPage(0);
+        }
+      },
+      error: () => {
+        this.patientOptions = patientIds.map((patientId) => ({ value: String(patientId), label: String(patientId) }));
+        this.normalizeSelectedFilters();
+        if (loadTicketsAfter) {
+          this.loadPage(0);
+        }
+      }
+    });
+  }
+
+  private formatPatientOption(patient: PatientDto, fallbackId: string): string {
+    const name = `${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim();
+    const code = patient.assistedId || `QTM-${String(fallbackId).padStart(6, '0')}`;
+    return name ? `${name} (${code})` : code;
   }
 
   // translation helper

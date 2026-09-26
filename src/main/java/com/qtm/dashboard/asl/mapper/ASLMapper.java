@@ -59,7 +59,7 @@ public class ASLMapper {
         return entity;
     }
 
-    private List<ReferentDto> readReferents(String referentsJson) {
+    public List<ReferentDto> readReferents(String referentsJson) {
         if (referentsJson == null || referentsJson.isBlank()) {
             return List.of();
         }
@@ -70,7 +70,7 @@ public class ASLMapper {
         }
     }
 
-    private String writeReferents(List<ReferentDto> referents) {
+    public String writeReferents(List<ReferentDto> referents) {
         try {
             return objectMapper.writeValueAsString(referents == null ? List.of() : referents);
         } catch (JsonProcessingException exception) {

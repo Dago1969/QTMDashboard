@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.qtm.commonlib.dto.ASLDto;
 import com.qtm.commonlib.dto.ASLImportRequest;
 import com.qtm.commonlib.dto.ASLOverviewDto;
+import com.qtm.commonlib.dto.ReferentDto;
 import com.qtm.dashboard.asl.service.ASLService;
 
 import lombok.RequiredArgsConstructor;
@@ -76,5 +77,27 @@ public class ASLController {
         ASLDto updated = aslService.update(id, dto);
         log.info("[ASLController] PUT /api/asl/{} updated", id);
         return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("/{id}/referents")
+    public ResponseEntity<List<ReferentDto>> findReferents(@PathVariable Long id) {
+        return ResponseEntity.ok(aslService.findReferents(id));
+    }
+
+    @PostMapping("/{id}/referents")
+    public ResponseEntity<List<ReferentDto>> addReferent(@PathVariable Long id, @RequestBody ReferentDto referent) {
+        return ResponseEntity.ok(aslService.addReferent(id, referent));
+    }
+
+    @PutMapping("/{id}/referents/{referentId}")
+    public ResponseEntity<List<ReferentDto>> updateReferent(@PathVariable Long id, @PathVariable Long referentId,
+            @RequestBody ReferentDto referent) {
+        return ResponseEntity.ok(aslService.updateReferent(id, referentId, referent));
+    }
+
+    @DeleteMapping("/{id}/referents/{referentId}")
+    public ResponseEntity<Void> removeReferent(@PathVariable Long id, @PathVariable Long referentId) {
+        aslService.removeReferent(id, referentId);
+        return ResponseEntity.noContent().build();
     }
 }
