@@ -1,11 +1,7 @@
 package com.qtm.dashboard.hospital.controller;
 
-import com.qtm.commonlib.dto.HospitalDto;
-import com.qtm.dashboard.hospital.dto.HospitalImportRequest;
-import com.qtm.dashboard.hospital.dto.HospitalOverviewDto;
-import com.qtm.dashboard.hospital.service.HospitalService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,9 +9,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.qtm.commonlib.dto.HospitalDto;
+import com.qtm.commonlib.dto.HospitalImportRequest;
+import com.qtm.commonlib.dto.HospitalOverviewDto;
+import com.qtm.dashboard.hospital.service.HospitalService;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
@@ -26,12 +29,25 @@ public class HospitalController {
     private final HospitalService hospitalService;
 
     @GetMapping("/overview")
-    public ResponseEntity<List<HospitalOverviewDto>> findAllWithImportStatus() {
+    public ResponseEntity<List<HospitalOverviewDto>> findAllWithImportStatus( 
+    		@RequestParam(required = false) String regionCode,
+            @RequestParam(required = false) String aslCode) {
         log.info("[HospitalController] GET /api/hospital/overview");
-        List<HospitalOverviewDto> result = hospitalService.findAllWithImportStatus();
+        List<HospitalOverviewDto> result = hospitalService.findAllWithImportStatus(regionCode, aslCode);
         log.info("[HospitalController] GET /api/hospital/overview returned {} records", result.size());
         return ResponseEntity.ok(result);
     }
+    
+    
+//    @GetMapping("/findAssociateAslByRegion")
+//    public ResponseEntity<List<HospitalOverviewDto>> findAssociateAslByRegion(
+//            @RequestParam(required = false) String regionCode
+//    ) {
+//        log.info("[HospitalController] GET /api/hospital/overview regionCode={} aslCode={}", regionCode, aslCode);
+//        List<HospitalOverviewDto> result = hospitalService.findAssociateAslByRegion(regionCode);
+//        log.info("[HospitalController] GET /api/hospital/overview returned {} records", result.size());
+//        return ResponseEntity.ok(result);
+//    }
 
     @PostMapping("/import")
     public ResponseEntity<List<HospitalDto>> importFromSource(@RequestBody HospitalImportRequest request) {
@@ -60,4 +76,6 @@ public class HospitalController {
         }
         return ResponseEntity.ok(hospital);
     }
+    
+
 }

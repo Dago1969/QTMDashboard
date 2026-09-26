@@ -361,7 +361,6 @@ public class StructureDepartmentService {
 
 	/**
 	 * Public wrapper to expose structure_departments rows for a given structure
-	 * code. This is used by other services (Tenants-app) to obtain the list of
 	 * departments associated to a hospital (codice_struttura) from QTMTicket.
 	 */
 	public List<StructureDepartmentSourceDto> listByStructureCode(String codiceStruttura) {
@@ -371,6 +370,24 @@ public class StructureDepartmentService {
 				rows == null ? 0 : rows.size(), codiceStruttura);
 		return rows;
 	}
+	
+	/**
+     * Recupera la lista dei reparti della struttura dato l'ID dell'ospedale (HospitalEntity).
+     */
+    public List<StructureDepartmentSourceDto> listByStructureId(Long id) {
+        log.info("[StructureDepartmentService] listByStructureId id={}", id);
+        if (id == null) {
+            return List.of();
+        }
+
+        HospitalEntity hospital = hospitalRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, 
+                        "Struttura non trovata con ID: " + id
+                ));
+
+        return listByStructureCode(hospital.getCodiceStruttura());
+    }
 
 	private String buildTicketApiUrl(String resourcePath) {
 		String normalizedResourcePath = resourcePath.startsWith("/") ? resourcePath.substring(1) : resourcePath;

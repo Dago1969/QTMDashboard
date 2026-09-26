@@ -1,30 +1,32 @@
 package com.qtm.dashboard.asl.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qtm.commonlib.dto.ASLDto;
-import com.qtm.dashboard.asl.dto.ASLOverviewDto;
-import com.qtm.dashboard.asl.entity.ASLEntity;
-import com.qtm.dashboard.asl.mapper.ASLMapper;
-import com.qtm.dashboard.asl.repository.ASLRepository;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.server.ResponseStatusException;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qtm.commonlib.dto.ASLDto;
+import com.qtm.commonlib.dto.ASLOverviewDto;
+import com.qtm.dashboard.asl.entity.ASLEntity;
+import com.qtm.dashboard.asl.mapper.ASLMapper;
+import com.qtm.dashboard.asl.repository.ASLRepository;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -95,17 +97,40 @@ public class ASLService {
                 .orElse(null);
     }
 
-    @Transactional(readOnly = true)
-    public List<ASLOverviewDto> findAllWithImportStatus() {
-        log.info("[ASLService] richiesta overview ASL con stato import");
-        List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
-        Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
-                .collect(Collectors.toMap(ASLEntity::getId, entity -> entity));
-        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> provinceMap = loadProvincesById(sourceAsls);
-        Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap = loadRegionsByCode(sourceAsls);
+//    @Transactional(readOnly = true)
+//    public List<ASLOverviewDto> findAllWithImportStatus(String regionCode) {
+//        log.info("[ASLService] richiesta overview ASL con stato import");
+//        List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
+//        Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
+//                .collect(Collectors.toMap(ASLEntity::getId, entity -> entity));
+//        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> provinceMap = loadProvincesById(sourceAsls);
+//        Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap = loadRegionsByCode(sourceAsls);
+//
+//        return sourceAsls.stream()
+//            .map(source -> toOverviewDto(source, localAslMap.get(source.getId()), provinceMap.get(source.getProvinceId()), regionMap))
+//                .toList();
+//    }
+    
+    public List<ASLOverviewDto> findAllWithImportStatus(String regionCode) {
+        log.info("[ASLService] findAllWithImportStatus - regionCode={}", regionCode);
 
-        return sourceAsls.stream()
-            .map(source -> toOverviewDto(source, localAslMap.get(source.getId()), provinceMap.get(source.getProvinceId()), regionMap))
+        // 1. Recupero entità locali da DB
+        List<ASLEntity> localAsls;
+        if (regionCode != null && !regionCode.isBlank()) {
+            localAsls = aslRepository.findByCodiceRegione(regionCode);
+        } else {
+            localAsls = aslRepository.findAll();
+        }
+
+        // 2. Mappatura in ASLOverviewDto
+        return localAsls.stream()
+                .map(entity -> ASLOverviewDto.builder()
+                        .aslId(entity.getId())                           // id -> aslId
+                        .asl(entity.getDenominazioneAzienda())          // denominazioneAzienda -> asl
+                        .codiceAsl(entity.getCodiceAzienda())            // codiceAzienda -> codiceAsl
+                        .codiceRegione(entity.getCodiceRegione())
+                        .imported(true)
+                        .build())
                 .toList();
     }
 

@@ -65,6 +65,13 @@ public class StructureDepartmentController {
         List<StructureDepartmentSourceDto> result = structureDepartmentService.listByStructureCode(codiceStruttura);
         return ResponseEntity.ok(result);
     }
+    
+    @GetMapping("/by-structure/{id}")
+    public ResponseEntity<List<StructureDepartmentSourceDto>> listByStructureId(@PathVariable Long id) {
+        log.info("[StructureDepartmentController] GET /api/structure-departments/by-structure/{}", id);
+        List<StructureDepartmentSourceDto> result = structureDepartmentService.listByStructureId(id);
+        return ResponseEntity.ok(result);
+    }
 
     @PostMapping("/import")
     public ResponseEntity<Void> importAssociation(@RequestBody StructureDepartmentImportRequest request) {

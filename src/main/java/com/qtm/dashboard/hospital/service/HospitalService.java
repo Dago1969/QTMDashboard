@@ -1,12 +1,13 @@
 package com.qtm.dashboard.hospital.service;
 
-import com.qtm.commonlib.dto.HospitalDto;
-import com.qtm.dashboard.hospital.dto.HospitalImportRequest;
-import com.qtm.dashboard.hospital.dto.HospitalOverviewDto;
-import com.qtm.dashboard.hospital.entity.HospitalEntity;
-import com.qtm.dashboard.hospital.mapper.HospitalMapper;
-import com.qtm.dashboard.hospital.repository.HospitalRepository;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -17,13 +18,14 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import com.qtm.commonlib.dto.HospitalDto;
+import com.qtm.commonlib.dto.HospitalImportRequest;
+import com.qtm.commonlib.dto.HospitalOverviewDto;
+import com.qtm.dashboard.hospital.entity.HospitalEntity;
+import com.qtm.dashboard.hospital.mapper.HospitalMapper;
+import com.qtm.dashboard.hospital.repository.HospitalRepository;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -91,40 +93,76 @@ public class HospitalService {
         return null;
     }
     
+//    @Transactional(readOnly = true)
+//    public List<HospitalOverviewDto> findAllWithImportStatus() {
+//        log.info("[HospitalService] richiesta overview ospedali con stato associazione");
+//        List<HospitalDto> sourceHospitals = fetchAllHospitalsFromTicket();
+//        Map<Long, HospitalEntity> localHospitalMap = hospitalRepository.findAll().stream()
+//                .collect(Collectors.toMap(HospitalEntity::getId, entity -> entity));
+//
+//        log.info("[HospitalService] sourceHospitals={} localHospitalMap={}", sourceHospitals.size(), localHospitalMap.size());
+//
+//        return sourceHospitals.stream()
+//                .map(hospital -> {
+//                    HospitalEntity localEntity = localHospitalMap.get(hospital.getId());
+//                    return HospitalOverviewDto.builder()
+//                            .id(hospital.getId())
+//                            .anno(hospital.getAnno())
+//                            .codiceRegione(hospital.getCodiceRegione())
+//                            .regione(hospital.getRegione())
+//                            .codiceAsl(hospital.getCodiceAsl())
+//                            .asl(hospital.getAsl())
+//                            .codiceStruttura(hospital.getCodiceStruttura())
+//                            .struttura(hospital.getStruttura())
+//                            .comune(hospital.getComune())
+//                            .siglaProvincia(hospital.getSiglaProvincia())
+//                            .indirizzo(hospital.getIndirizzo())
+//                            .hospitalTypeId(hospital.getHospitalTypeId())
+//                            .tipoStruttura(hospital.getTipoStruttura())
+//                            .aslId(hospital.getAslId())
+//                            .imported(localEntity != null)
+//                            .note(localEntity != null ? localEntity.getNote() : null)
+//                            .build();
+//                })
+//                .toList();
+//    }
+    
     @Transactional(readOnly = true)
-    public List<HospitalOverviewDto> findAllWithImportStatus() {
-        log.info("[HospitalService] richiesta overview ospedali con stato associazione");
-        List<HospitalDto> sourceHospitals = fetchAllHospitalsFromTicket();
-        Map<Long, HospitalEntity> localHospitalMap = hospitalRepository.findAll().stream()
-                .collect(Collectors.toMap(HospitalEntity::getId, entity -> entity));
+    public List<HospitalOverviewDto> findAllWithImportStatus(String regionCode, String aslCode) {
+        log.info("[HospitalService] findAllWithImportStatus - regionCode={}, aslCode={}", regionCode, aslCode);
 
-        log.info("[HospitalService] sourceHospitals={} localHospitalMap={}", sourceHospitals.size(), localHospitalMap.size());
+        // 1. Recupero entità locali da DB filtrando in base ai parametri
+        List<HospitalEntity> localHospitals;
+        
+        boolean hasRegion = regionCode != null && !regionCode.isBlank();
+        boolean hasAsl = aslCode != null && !aslCode.isBlank();
 
-        return sourceHospitals.stream()
-                .map(hospital -> {
-                    HospitalEntity localEntity = localHospitalMap.get(hospital.getId());
-                    return HospitalOverviewDto.builder()
-                            .id(hospital.getId())
-                            .anno(hospital.getAnno())
-                            .codiceRegione(hospital.getCodiceRegione())
-                            .regione(hospital.getRegione())
-                            .codiceAsl(hospital.getCodiceAsl())
-                            .asl(hospital.getAsl())
-                            .codiceStruttura(hospital.getCodiceStruttura())
-                            .struttura(hospital.getStruttura())
-                            .comune(hospital.getComune())
-                            .siglaProvincia(hospital.getSiglaProvincia())
-                            .indirizzo(hospital.getIndirizzo())
-                            .hospitalTypeId(hospital.getHospitalTypeId())
-                            .tipoStruttura(hospital.getTipoStruttura())
-                            .aslId(hospital.getAslId())
-                            .imported(localEntity != null)
-                            .note(localEntity != null ? localEntity.getNote() : null)
-                            .build();
-                })
+        if (hasRegion && hasAsl) {
+            localHospitals = hospitalRepository.findByCodiceRegioneAndCodiceAsl(regionCode, aslCode);
+        } else if (hasRegion) {
+            localHospitals = hospitalRepository.findByCodiceRegione(regionCode);
+        } else if (hasAsl) {
+            localHospitals = hospitalRepository.findByCodiceAsl(aslCode);
+        } else {
+            localHospitals = hospitalRepository.findAll();
+        }
+
+        // 2. Mappatura in HospitalOverviewDto
+        return localHospitals.stream()
+                .map(entity -> HospitalOverviewDto.builder()
+                        .id(entity.getId())
+                        .strutturaId(entity.getId())                           // id per il frontend Angular
+                        .struttura(entity.getStruttura())                      // denominazione struttura
+                        .codiceStruttura(entity.getCodiceStruttura())
+                        .codiceRegione(entity.getCodiceRegione())
+                        .codiceAsl(entity.getCodiceAsl())
+                        .aslId(entity.getAslId())
+                        .imported(true)                                        // Presente nel DB locale
+                        .note(entity.getNote())
+                        .build())
                 .toList();
     }
-
+    
     @Transactional
     public void deleteAssociation(Long id) {
         log.info("[HospitalService] disassociazione ospedale id={}", id);
@@ -246,4 +284,5 @@ public class HospitalService {
         }
         return normalizedBaseUrl + "/api";
     }
-}
+
+	}

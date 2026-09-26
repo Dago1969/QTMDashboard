@@ -10,11 +10,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.qtm.commonlib.dto.ASLDto;
-import com.qtm.dashboard.asl.dto.ASLImportRequest;
-import com.qtm.dashboard.asl.dto.ASLOverviewDto;
+import com.qtm.commonlib.dto.ASLImportRequest;
+import com.qtm.commonlib.dto.ASLOverviewDto;
 import com.qtm.dashboard.asl.service.ASLService;
 
 import lombok.RequiredArgsConstructor;
@@ -37,9 +38,9 @@ public class ASLController {
     }
 
     @GetMapping("/overview")
-    public ResponseEntity<List<ASLOverviewDto>> findAllWithImportStatus() {
-        log.info("[ASLController] GET /api/asl/overview");
-        List<ASLOverviewDto> result = aslService.findAllWithImportStatus();
+    public ResponseEntity<List<ASLOverviewDto>> findAllWithImportStatus(@RequestParam(required = false) String regionCode) {
+        log.info("[ASLController] GET /api/asl/overview regionCode={}", regionCode);
+        List<ASLOverviewDto> result = aslService.findAllWithImportStatus(regionCode);
         log.info("[ASLController] GET /api/asl/overview returned {} records", result.size());
         return ResponseEntity.ok(result);
     }
