@@ -43,6 +43,7 @@
     <include file="20260912-02-create-structure-department-table.xml" relativeToChangelogFile="true"/>
 
     <include file="20260916-02-add-structure-department-ticket-id.yaml" relativeToChangelogFile="true"/>
+    <include file="20260928-01-add-descrizione-disciplina-to-structure-department.yaml" relativeToChangelogFile="true"/>
 
     <!-- Ensure hospital table columns align with expected schema (idempotent) -->
     <include file="20260916-01-align-hospital-table.xml" relativeToChangelogFile="true"/>

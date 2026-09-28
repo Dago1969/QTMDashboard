@@ -16,4 +16,5 @@ public class StructureDepartmentImportRequest {
 
     private String codiceStruttura;
     private String codiceDisciplina;
+    private String descrizioneDisciplina;
 }

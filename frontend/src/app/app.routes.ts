@@ -4,7 +4,6 @@ import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { authGuard } from './core/auth.guard';
 import { PatientsTesterComponent } from './patients-tester.component';
 import { ChangePasswordComponent } from './shared/change-password/change-password.component';
-import { PatientsSearchComponent } from './features/patients-search/patients-search.component';
 import { PatientsCrudComponent } from './features/patients/patients-crud.component';
 import { MedicinesSearchComponent } from './features/medicines-search/medicines-search.component';
 import { MedicinesCrudComponent } from './features/medicines/medicines-crud.component';
@@ -35,7 +34,6 @@ export const appRoutes: Routes = [
     component: DashboardComponent,
     canActivate: [authGuard],
     children: [
-      { path: 'patients/search', component: PatientsSearchComponent, canActivate: [authGuard] },
       { path: 'medicines/search', component: MedicinesSearchComponent, canActivate: [authGuard] },
       { path: 'projects/search', component: ProjectsSearchComponent, canActivate: [authGuard] },
       { path: 'projects/new', component: ProjectsCrudComponent, canActivate: [authGuard] },
@@ -48,7 +46,7 @@ export const appRoutes: Routes = [
       { path: 'tickets', component: TicketsManagementComponent, canActivate: [authGuard] }
     ]
   },
-  { path: 'patients/search', pathMatch: 'full', redirectTo: 'dashboard/patients/search' },
+  { path: 'patients/search', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: 'patients/new', component: PatientsCrudComponent, canActivate: [authGuard] },
   { path: 'patients/:id', component: PatientsCrudComponent, canActivate: [authGuard] },
   { path: 'patients/:id/view', component: PatientsCrudComponent, canActivate: [authGuard], data: { mode: 'view' } },

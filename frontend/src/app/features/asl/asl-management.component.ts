@@ -26,6 +26,12 @@ interface AslRecord {
   imported: boolean;
 }
 
+interface RegionOption {
+  regionCode?: string;
+  code?: string;
+  name?: string;
+}
+
 interface Referent {
   id?: number;
   firstName: string;
@@ -48,6 +54,8 @@ interface Referent {
       [filters]="filters"
       [columns]="columns"
       [fetchResults]="fetchResults"
+      [filtersClass]="'asl-filters-three-columns'"
+      [hideFilterActions]="true"
       [showCreateAction]="false"
       (actionColumn)="onAction($event)"
     />
@@ -56,8 +64,8 @@ interface Referent {
       <section class="asl-referents-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <header class="qtm-modal-header asl-referents-header">
           <div class="qtm-modal-header-top">
-            <h3 class="qtm-modal-title">{{ t('asl.referents.title') }}</h3>
-            <button class="qtm-modal-close" type="button" (click)="closeReferents()" [attr.aria-label]="t('asl.referents.close')">
+            <h3 class="qtm-modal-title">{{ t('referents.title') }}</h3>
+            <button class="qtm-modal-close" type="button" (click)="closeReferents()" [attr.aria-label]="t('referents.close')">
               <span class="qtm-modal-close-circle" aria-hidden="true"><span class="qtm-modal-close-icon"></span></span>
             </button>
           </div>
@@ -65,8 +73,8 @@ interface Referent {
         <div class="asl-referents-subheader"><strong>{{ referentsAsl.denominazioneAzienda || referentsAsl.codiceAzienda }}</strong></div>
         <div class="asl-referents-content">
           <div class="asl-referents-list">
-            <h4>{{ t('asl.referents.current') }} ({{ referents.length }})</h4>
-            <p *ngIf="referents.length === 0" class="asl-referents-empty">{{ t('asl.referents.empty') }}</p>
+            <h4>{{ t('referents.current') }} ({{ referents.length }})</h4>
+            <p *ngIf="referents.length === 0" class="asl-referents-empty">{{ t('referents.empty') }}</p>
             <article *ngFor="let referent of referents" class="asl-referent-card" [class.asl-referent-card-editing]="editingReferentId === referent.id">
               <div class="asl-referent-details">
                 <strong class="asl-referent-name">{{ referent.firstName }} {{ referent.lastName }}</strong>
@@ -76,30 +84,30 @@ interface Referent {
               </div>
               <div class="asl-referent-actions">
                 <button class="btn btn-outline btn-sm" type="button" (click)="editReferent(referent)" [disabled]="referentsBusy">
-                  {{ t('asl.referents.edit') }}
+                  {{ t('referents.edit') }}
                 </button>
                 <button class="btn btn-outline-danger btn-sm asl-referent-remove" type="button" (click)="removeReferent(referent)" [disabled]="referentsBusy">
-                  {{ t('asl.referents.remove') }}
+                  {{ t('referents.remove') }}
                 </button>
               </div>
             </article>
           </div>
           <form class="asl-referent-form asl-tenapp-form" (ngSubmit)="saveReferent()">
-            <h4>{{ editingReferentId !== null ? t('asl.referents.editTitle') + ' (' + newReferent.firstName + ' ' + newReferent.lastName + ')' : t('asl.referents.add') }}</h4>
+            <h4>{{ editingReferentId !== null ? t('referents.editTitle') + ' (' + newReferent.firstName + ' ' + newReferent.lastName + ')' : t('referents.add') }}</h4>
             <div class="asl-referent-form-grid">
-              <label class="asl-tenapp-field"><span>{{ t('asl.referents.firstName') }}</span><input class="asl-filter-input" type="text" name="firstName" [(ngModel)]="newReferent.firstName" required /></label>
-              <label class="asl-tenapp-field"><span>{{ t('asl.referents.lastName') }}</span><input class="asl-filter-input" type="text" name="lastName" [(ngModel)]="newReferent.lastName" required /></label>
-              <label class="asl-tenapp-field"><span>{{ t('asl.referents.role') }}</span><input class="asl-filter-input" type="text" name="role" [(ngModel)]="newReferent.role" /></label>
-              <label class="asl-tenapp-field"><span>{{ t('asl.referents.phone') }}</span><input class="asl-filter-input" type="tel" name="phone" [(ngModel)]="newReferent.phone" /></label>
-              <label class="asl-referent-field-wide asl-tenapp-field"><span>{{ t('asl.referents.email') }}</span><input class="asl-filter-input" type="email" name="email" [(ngModel)]="newReferent.email" /></label>
-              <label class="asl-referent-note asl-tenapp-field"><span>{{ t('asl.referents.note') }}</span><textarea class="asl-filter-input" name="note" [(ngModel)]="newReferent.note" rows="3"></textarea></label>
+              <label class="asl-tenapp-field"><span>{{ t('referents.firstName') }}</span><input class="asl-filter-input" type="text" name="firstName" [(ngModel)]="newReferent.firstName" required /></label>
+              <label class="asl-tenapp-field"><span>{{ t('referents.lastName') }}</span><input class="asl-filter-input" type="text" name="lastName" [(ngModel)]="newReferent.lastName" required /></label>
+              <label class="asl-tenapp-field"><span>{{ t('referents.role') }}</span><input class="asl-filter-input" type="text" name="role" [(ngModel)]="newReferent.role" /></label>
+              <label class="asl-tenapp-field"><span>{{ t('referents.phone') }}</span><input class="asl-filter-input" type="tel" name="phone" [(ngModel)]="newReferent.phone" /></label>
+              <label class="asl-referent-field-wide asl-tenapp-field"><span>{{ t('referents.email') }}</span><input class="asl-filter-input" type="email" name="email" [(ngModel)]="newReferent.email" /></label>
+              <label class="asl-referent-note asl-tenapp-field"><span>{{ t('referents.note') }}</span><textarea class="asl-filter-input" name="note" [(ngModel)]="newReferent.note" rows="3"></textarea></label>
             </div>
             <div class="asl-referent-form-actions">
               <button class="btn btn-primary" type="submit" [disabled]="referentsBusy">
-                {{ editingReferentId !== null ? t('asl.referents.updateAction') : t('asl.referents.addAction') }}
+                {{ editingReferentId !== null ? t('referents.updateAction') : t('referents.addAction') }}
               </button>
               <button *ngIf="editingReferentId !== null" class="btn btn-outline" type="button" (click)="cancelEdit()" [disabled]="referentsBusy">
-                {{ t('asl.referents.cancelEdit') }}
+                {{ t('referents.cancelEdit') }}
               </button>
             </div>
           </form>
@@ -111,14 +119,10 @@ interface Referent {
 export class AslManagementComponent implements OnInit {
   @ViewChild(SearchPageComponent) private searchPage?: SearchPageComponent<AslRecord>;
 
-  readonly filters: SearchFilterField[] = [
-    { key: 'id', labelKey: 'asl.filter.id', type: 'number' },
-    { key: 'code', labelKey: 'asl.filter.code', type: 'text' },
+  filters: SearchFilterField[] = [
     { key: 'name', labelKey: 'asl.filter.name', type: 'text' },
-    { key: 'regionCode', labelKey: 'patients.field.region', type: 'text' },
-    { key: 'provinceId', labelKey: 'patients.field.province', type: 'text' },
-    { key: 'imported', labelKey: 'hospital.filter.imported', type: 'select', options: [
-      { value: 'all', labelKey: 'hospital.filter.status.all' },
+    { key: 'regionCode', labelKey: 'patients.field.region', type: 'select', options: [], emptyOptionLabelKey: 'hospital.filter.status.all' },
+    { key: 'imported', labelKey: 'hospital.filter.imported', type: 'select', emptyOptionLabelKey: 'hospital.filter.status.all', options: [
       { value: 'imported', labelKey: 'hospital.filter.status.imported' },
       { value: 'notImported', labelKey: 'hospital.filter.status.notImported' }
     ] }
@@ -141,6 +145,7 @@ export class AslManagementComponent implements OnInit {
   referents: Referent[] = [];
   referentsBusy = false;
   translations: Record<string, string> = {};
+  regions: RegionOption[] = [];
   newReferent: Referent = this.emptyReferent();
   editingReferentId: number | null = null;
 
@@ -152,6 +157,17 @@ export class AslManagementComponent implements OnInit {
   constructor(private readonly http: HttpClient, private readonly i18nPropertiesService: I18nPropertiesService) {}
 
   ngOnInit(): void {
+    this.http.get<RegionOption[]>(`${environment.apiBaseUrl}/geography/regions`).subscribe({
+      next: (regions) => {
+        this.regions = regions ?? [];
+        const regionFilter = this.filters.find((filter) => filter.key === 'regionCode');
+        if (regionFilter) {
+          regionFilter.options = this.regions
+            .filter((region) => (region.code || region.regionCode) && region.name)
+            .map((region) => ({ value: region.code || region.regionCode!, label: region.name! }));
+        }
+      }
+    });
     this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations) => {
       this.translations = translations;
     });
@@ -251,9 +267,8 @@ export class AslManagementComponent implements OnInit {
   }
 
   private matchesFilters(row: AslRecord, filters: Record<string, string>): boolean {
-    return (!filters['id'] || row.id === Number(filters['id']))
-      && (!filters['code'] || (row.codiceAzienda || '').toLowerCase().includes(filters['code'].toLowerCase()))
-      && (!filters['name'] || (row.denominazioneAzienda || '').toLowerCase().includes(filters['name'].toLowerCase()))
-      && (!filters['imported'] || filters['imported'] === 'all' || (filters['imported'] === 'imported' ? row.imported : !row.imported));
+    return (!filters['name'] || (row.denominazioneAzienda || '').toLowerCase().includes(filters['name'].toLowerCase()))
+      && (!filters['regionCode'] || (row.codiceRegione || '') === filters['regionCode'])
+      && (!filters['imported'] || (filters['imported'] === 'imported' ? row.imported : !row.imported));
   }
 }

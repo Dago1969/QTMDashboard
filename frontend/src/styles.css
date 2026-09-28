@@ -1697,3 +1697,62 @@ label {
     padding: 16px;
   }
 }
+
+.asl-filters-three-columns .search-filters-form-inline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.asl-filters-three-columns .search-filter-label-inline {
+  min-width: 0;
+  width: 100%;
+  gap: 6px;
+}
+
+.asl-filters-three-columns .search-filter-label-inline input,
+.asl-filters-three-columns .search-filter-label-inline select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  height: 40px;
+  margin: 0;
+}
+
+.hospitals-filters-four-columns .search-filters-form-inline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 16px;
+}
+
+.hospitals-filters-four-columns .search-filter-label-inline {
+  min-width: 0;
+  width: 100%;
+  gap: 6px;
+  margin: 0;
+}
+
+.hospitals-filters-four-columns .search-filter-label-inline span {
+  min-height: 16px;
+  margin: 0 0 2px;
+}
+
+.hospitals-filters-four-columns .search-filter-label-inline input,
+.hospitals-filters-four-columns .search-filter-label-inline select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  height: 40px;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .asl-filters-three-columns .search-filters-form-inline {
+    grid-template-columns: 1fr;
+  }
+
+  .hospitals-filters-four-columns .search-filters-form-inline {
+    grid-template-columns: 1fr;
+  }
+}

@@ -18,6 +18,7 @@ export interface SearchFilterField {
   labelKey: string;
   type: 'text' | 'number' | 'date' | 'select';
   options?: SearchOption[];
+  emptyOptionLabelKey?: string;
 }
 
 export interface SearchResultColumn<T = any> {
@@ -71,7 +72,7 @@ export interface SearchFilterChangeEvent {
         </div>
       </div>
 
-      <div *ngIf="showFilters" class="search-filters-panel">
+      <div *ngIf="showFilters" class="search-filters-panel" [class.asl-filters-three-columns]="filtersClass === 'asl-filters-three-columns'" [class.hospitals-filters-four-columns]="filtersClass === 'hospitals-filters-four-columns'">
         <form class="search-filters-form-inline" (ngSubmit)="search()">
           <label *ngFor="let field of filters" class="search-filter-label-inline">
             <span>{{ translate(field.labelKey) }}</span>
@@ -81,22 +82,23 @@ export interface SearchFilterChangeEvent {
               [type]="field.type"
               [(ngModel)]="filterModel[field.key]"
               [name]="field.key"
+              (input)="filterChanged.emit({ key: field.key, value: filterModel[field.key] ?? '' }); search(false)"
             />
 
             <select
               *ngIf="field.type === 'select'"
               [(ngModel)]="filterModel[field.key]"
               [name]="field.key"
-              (ngModelChange)="filterChanged.emit({ key: field.key, value: $event ?? '' })"
+              (change)="filterChanged.emit({ key: field.key, value: filterModel[field.key] ?? '' }); search(false)"
             >
-              <option value=""></option>
+              <option [ngValue]="null">{{ field.emptyOptionLabelKey ? translate(field.emptyOptionLabelKey) : '' }}</option>
               <option *ngFor="let option of field.options ?? []" [value]="option.value">
                 {{ option.label ? option.label : translate(option.labelKey || '') }}
               </option>
             </select>
           </label>
 
-          <div class="search-filters-actions-inline">
+          <div *ngIf="!hideFilterActions" class="search-filters-actions-inline">
             <button type="submit" class="btn btn-primary">{{ translate('crud.actions.search') }}</button>
             <button type="button" class="btn btn-outline" (click)="resetFilters()">{{ translate('crud.actions.reset') }}</button>
           </div>
@@ -142,7 +144,7 @@ export interface SearchFilterChangeEvent {
         <table class="search-table" *ngIf="filteredResults().length > 0; else emptyState">
           <thead>
             <tr>
-              <th>{{ translate('common.id') }}</th>
+              <th *ngIf="!hideRowId">{{ translate('common.id') }}</th>
               <th *ngFor="let column of displayColumns">
                 {{ translate(column.labelKey) }}
               </th>
@@ -152,7 +154,7 @@ export interface SearchFilterChangeEvent {
 
           <tbody>
             <tr *ngFor="let row of pagedResults()">
-              <td>{{ getRowId(row) }}</td>
+              <td *ngIf="!hideRowId">{{ getRowId(row) }}</td>
               <td *ngFor="let column of displayColumns">{{ getCellValue(column, row) }}</td>
               <td *ngIf="hasActions" class="actions">
                 <ng-container *ngTemplateOutlet="rowActionsTemplate; context: { $implicit: row }"></ng-container>
@@ -213,6 +215,9 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
   @Input() showDeleteAction = false;
   @Input() initialFilters: Record<string, string> = {};
   @Input() rowActionsTemplate: TemplateRef<{ $implicit: T }> | null = null;
+  @Input() filtersClass = '';
+  @Input() hideFilterActions = false;
+  @Input() hideRowId = false;
 
   @Output() readonly createAction = new EventEmitter<void>();
   @Output() readonly viewAction = new EventEmitter<SearchPageActionEvent<T>>();
@@ -300,6 +305,10 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
   resetFilters(): void {
     this.filterModel = { ...this.initialFilters };
     this.search(false);
+  }
+
+  setFilterValue(key: string, value: string | null): void {
+    this.filterModel[key] = value as string;
   }
 
   filteredResults(): T[] {

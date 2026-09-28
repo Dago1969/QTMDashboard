@@ -1,15 +1,19 @@
 package com.qtm.dashboard.structuredepartment.service;
 
 import com.qtm.commonlib.dto.RegionDto;
+import com.qtm.commonlib.dto.ReferentDto;
+import com.qtm.commonlib.dto.StructureDepartmentFilterOptionDto;
+import com.qtm.commonlib.dto.StructureDepartmentFilterOptionsDto;
+import com.qtm.commonlib.dto.StructureDepartmentOverviewDto;
+import com.qtm.commonlib.dto.StructureDepartmentSourceDto;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.repository.ASLRepository;
 import com.qtm.dashboard.hospital.entity.HospitalEntity;
 import com.qtm.dashboard.hospital.repository.HospitalRepository;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentFilterOptionDto;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentFilterOptionsDto;
 import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentImportRequest;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentOverviewDto;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentSourceDto;
 import com.qtm.dashboard.structuredepartment.entity.StructureDepartmentEntity;
 import com.qtm.dashboard.structuredepartment.repository.StructureDepartmentRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +37,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Servizio che popola i filtri dai sorgenti associati e legge da QTMTicket solo
@@ -43,6 +48,7 @@ import java.util.stream.Collectors;
 public class StructureDepartmentService {
 
 	private static final String EMPTY_REFERENTS_JSON = "[]";
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	private final ASLRepository aslRepository;
 	private final HospitalRepository hospitalRepository;
@@ -82,9 +88,64 @@ public class StructureDepartmentService {
 			StructureDepartmentEntity entity = localEntity.get();
 			return StructureDepartmentSourceDto.builder().id(entity.getId())
 					.codiceStruttura(entity.getCodiceStruttura()).codiceDisciplina(entity.getCodiceDisciplina())
-					.disciplina(entity.getCodiceDisciplina()).build();
+					.disciplina(entity.getCodiceDisciplina())
+					.descrizioneDisciplina(entity.getDescrizioneDisciplina()).build();
 		} else 
 			return null;
+	}
+
+	@Transactional(readOnly = true)
+	public List<ReferentDto> findReferents(Long id) {
+		return readReferents(findAssociatedEntity(id).getReferentsJson());
+	}
+
+	@Transactional
+	public List<ReferentDto> addReferent(Long id, ReferentDto referent) {
+		if (referent == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Referente mancante");
+		StructureDepartmentEntity entity = findAssociatedEntity(id);
+		List<ReferentDto> referents = new ArrayList<>(readReferents(entity.getReferentsJson()));
+		long nextId = referents.stream().map(ReferentDto::getId).filter(Objects::nonNull).max(Long::compareTo).orElse(0L) + 1;
+		referents.add(referent.toBuilder().id(referent.getId() == null ? nextId : referent.getId()).build());
+		entity.setReferentsJson(writeReferents(referents));
+		structureDepartmentRepository.save(entity);
+		return referents;
+	}
+
+	@Transactional
+	public List<ReferentDto> updateReferent(Long id, Long referentId, ReferentDto referent) {
+		if (referent == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Referente mancante");
+		StructureDepartmentEntity entity = findAssociatedEntity(id);
+		List<ReferentDto> referents = new ArrayList<>(readReferents(entity.getReferentsJson()));
+		int index = IntStream.range(0, referents.size()).filter(i -> Objects.equals(referents.get(i).getId(), referentId)).findFirst().orElse(-1);
+		if (index < 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Referente non associato: " + referentId);
+		referents.set(index, referent.toBuilder().id(referentId).build());
+		entity.setReferentsJson(writeReferents(referents));
+		structureDepartmentRepository.save(entity);
+		return referents;
+	}
+
+	@Transactional
+	public void removeReferent(Long id, Long referentId) {
+		StructureDepartmentEntity entity = findAssociatedEntity(id);
+		List<ReferentDto> referents = new ArrayList<>(readReferents(entity.getReferentsJson()));
+		if (!referents.removeIf(item -> Objects.equals(item.getId(), referentId))) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Referente non associato: " + referentId);
+		entity.setReferentsJson(writeReferents(referents));
+		structureDepartmentRepository.save(entity);
+	}
+
+	private StructureDepartmentEntity findAssociatedEntity(Long id) {
+		return structureDepartmentRepository.findById(Objects.requireNonNull(id, "Reparto mancante"))
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reparto non associato: " + id));
+	}
+
+	private List<ReferentDto> readReferents(String json) {
+		try { return json == null || json.isBlank() ? List.of() : objectMapper.readValue(json, new TypeReference<>() {}); }
+		catch (JsonProcessingException exception) { throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Referenti non validi", exception); }
+	}
+
+	private String writeReferents(List<ReferentDto> referents) {
+		try { return objectMapper.writeValueAsString(referents); }
+		catch (JsonProcessingException exception) { throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Impossibile salvare i referenti", exception); }
 	}
 
 	@Transactional(readOnly = true)
@@ -164,6 +225,11 @@ public class StructureDepartmentService {
 		entity.setTicketStructureDepartmentId(sourceDepartment.getId());
 		entity.setCodiceStruttura(codiceStruttura);
 		entity.setCodiceDisciplina(codiceDisciplina);
+		String descrizioneDisciplina = StringUtils.hasText(sourceDepartment.getDescrizioneDisciplina())
+				? sourceDepartment.getDescrizioneDisciplina()
+				: StringUtils.hasText(sourceDepartment.getDisciplina()) ? sourceDepartment.getDisciplina()
+						: request.getDescrizioneDisciplina();
+		entity.setDescrizioneDisciplina(descrizioneDisciplina);
 		entity.setReferentsJson(
 				StringUtils.hasText(entity.getReferentsJson()) ? entity.getReferentsJson() : EMPTY_REFERENTS_JSON);
 		structureDepartmentRepository.save(entity);
@@ -204,6 +270,7 @@ public class StructureDepartmentService {
 				.codiceStruttura(sourceDepartment.getCodiceStruttura())
 				.struttura(hospital != null ? hospital.getStruttura() : null)
 				.codiceDisciplina(sourceDepartment.getCodiceDisciplina()).disciplina(sourceDepartment.getDisciplina())
+				.descrizioneDisciplina(sourceDepartment.getDescrizioneDisciplina())
 				.indirizzo(sourceDepartment.getIndirizzo()).imported(localAssociationsByKey.containsKey(associationKey))
 				.build();
 	}
@@ -365,10 +432,33 @@ public class StructureDepartmentService {
 	 */
 	public List<StructureDepartmentSourceDto> listByStructureCode(String codiceStruttura) {
 		log.info("[StructureDepartmentService] listByStructureCode called codiceStruttura={}", codiceStruttura);
-		List<StructureDepartmentSourceDto> rows = fetchStructureDepartmentsByStructureCode(codiceStruttura);
+		List<StructureDepartmentSourceDto> rows = fetchStructureDepartmentsByStructureCode(codiceStruttura).stream()
+				.map(this::enrichWithLocalDescription).toList();
 		log.info("[StructureDepartmentService] returning {} rows for codiceStruttura={}",
 				rows == null ? 0 : rows.size(), codiceStruttura);
 		return rows;
+	}
+
+	private StructureDepartmentSourceDto enrichWithLocalDescription(StructureDepartmentSourceDto sourceDepartment) {
+		if (sourceDepartment == null) {
+			return null;
+		}
+
+		StructureDepartmentEntity localEntity = structureDepartmentRepository
+				.findByCodiceStrutturaAndCodiceDisciplina(sourceDepartment.getCodiceStruttura(), sourceDepartment.getCodiceDisciplina())
+				.orElse(null);
+		if (localEntity == null || !StringUtils.hasText(localEntity.getDescrizioneDisciplina())) {
+			return sourceDepartment;
+		}
+
+		return StructureDepartmentSourceDto.builder()
+			.id(sourceDepartment.getId())
+			.codiceStruttura(sourceDepartment.getCodiceStruttura())
+			.codiceDisciplina(sourceDepartment.getCodiceDisciplina())
+			.disciplina(sourceDepartment.getDisciplina())
+			.descrizioneDisciplina(localEntity.getDescrizioneDisciplina())
+			.indirizzo(sourceDepartment.getIndirizzo())
+			.build();
 	}
 	
 	/**

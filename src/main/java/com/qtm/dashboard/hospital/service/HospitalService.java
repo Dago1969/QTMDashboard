@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ import org.springframework.web.server.ResponseStatusException;
 import com.qtm.commonlib.dto.HospitalDto;
 import com.qtm.commonlib.dto.HospitalImportRequest;
 import com.qtm.commonlib.dto.HospitalOverviewDto;
+import com.qtm.dashboard.asl.entity.ASLEntity;
+import com.qtm.dashboard.asl.repository.ASLRepository;
+import com.qtm.commonlib.dto.ReferentDto;
 import com.qtm.dashboard.hospital.entity.HospitalEntity;
 import com.qtm.dashboard.hospital.mapper.HospitalMapper;
 import com.qtm.dashboard.hospital.repository.HospitalRepository;
@@ -33,6 +37,7 @@ public class HospitalService {
 
     private final HospitalRepository hospitalRepository;
     private final HospitalMapper hospitalMapper;
+    private final ASLRepository aslRepository;
     private final RestClient restClient;
     private final String ticketBaseUrl;
     private final String ticketApiRootUrl;
@@ -41,11 +46,13 @@ public class HospitalService {
     public HospitalService(
             HospitalRepository hospitalRepository,
             HospitalMapper hospitalMapper,
+            ASLRepository aslRepository,
                 @Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
     ) {
         this(
             hospitalRepository,
             hospitalMapper,
+            aslRepository,
             RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build(),
             ticketBaseUrl
         );
@@ -54,11 +61,13 @@ public class HospitalService {
     HospitalService(
             HospitalRepository hospitalRepository,
             HospitalMapper hospitalMapper,
+            ASLRepository aslRepository,
             RestClient restClient,
             String ticketBaseUrl
     ) {
         this.hospitalRepository = hospitalRepository;
         this.hospitalMapper = hospitalMapper;
+        this.aslRepository = aslRepository;
         this.restClient = restClient;
         this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "qtm.ticket.base-url mancante");
         this.ticketApiRootUrl = deriveTicketApiRootUrl(ticketBaseUrl);
@@ -147,6 +156,20 @@ public class HospitalService {
             localHospitals = hospitalRepository.findAll();
         }
 
+        Map<Long, ASLEntity> aslsById = aslRepository.findAll().stream()
+            .filter(asl -> asl.getId() != null)
+            .collect(Collectors.toMap(ASLEntity::getId, asl -> asl, (left, right) -> left));
+        Map<String, ASLEntity> aslsByCode = aslsById.values().stream()
+            .filter(asl -> asl.getCodiceAzienda() != null && !asl.getCodiceAzienda().isBlank())
+            .collect(Collectors.toMap(asl -> normalizeCode(asl.getCodiceAzienda()), asl -> asl, (left, right) -> left));
+        Map<String, ASLEntity> aslsByRegionAndCode = aslsById.values().stream()
+            .filter(asl -> asl.getCodiceRegione() != null && !asl.getCodiceRegione().isBlank())
+            .filter(asl -> asl.getCodiceAzienda() != null && !asl.getCodiceAzienda().isBlank())
+            .collect(Collectors.toMap(
+                asl -> buildAslKey(asl.getCodiceRegione(), asl.getCodiceAzienda()),
+                asl -> asl,
+                (left, right) -> left));
+
         // 2. Mappatura in HospitalOverviewDto
         return localHospitals.stream()
                 .map(entity -> HospitalOverviewDto.builder()
@@ -156,11 +179,35 @@ public class HospitalService {
                         .codiceStruttura(entity.getCodiceStruttura())
                         .codiceRegione(entity.getCodiceRegione())
                         .codiceAsl(entity.getCodiceAsl())
+                        .asl(resolveAslName(entity, aslsById, aslsByCode, aslsByRegionAndCode))
                         .aslId(entity.getAslId())
                         .imported(true)                                        // Presente nel DB locale
                         .note(entity.getNote())
                         .build())
                 .toList();
+    }
+
+    private String resolveAslName(HospitalEntity hospital, Map<Long, ASLEntity> aslsById,
+            Map<String, ASLEntity> aslsByCode, Map<String, ASLEntity> aslsByRegionAndCode) {
+        ASLEntity asl = null;
+        if (hospital.getCodiceRegione() != null && hospital.getCodiceAsl() != null) {
+            asl = aslsByRegionAndCode.get(buildAslKey(hospital.getCodiceRegione(), hospital.getCodiceAsl()));
+        }
+        if (asl == null && hospital.getAslId() != null) {
+            asl = aslsById.get(hospital.getAslId());
+        }
+        if (asl == null && hospital.getCodiceAsl() != null) {
+            asl = aslsByCode.get(normalizeCode(hospital.getCodiceAsl()));
+        }
+        return asl != null ? asl.getDenominazioneAzienda() : null;
+    }
+
+    private String buildAslKey(String regionCode, String aslCode) {
+        return normalizeCode(regionCode) + ":" + normalizeCode(aslCode);
+    }
+
+    private String normalizeCode(String value) {
+        return value.trim().replaceFirst("^0+(?!$)", "");
     }
     
     @Transactional
@@ -224,8 +271,65 @@ public class HospitalService {
     private HospitalDto saveImportedHospital(HospitalDto hospitalDto) {
         HospitalEntity entity = Objects.requireNonNull(hospitalMapper.dtoToEntity(hospitalDto), "Entity ospedale non valorizzata");
         hospitalRepository.findById(Objects.requireNonNull(hospitalDto.getId(), "Source hospital id mancante"))
-                .ifPresent(existing -> entity.setNote(existing.getNote()));
+                .ifPresent(existing -> {
+                    entity.setNote(existing.getNote());
+                    entity.setReferentsJson(existing.getReferentsJson());
+                });
         return hospitalMapper.entityToDto(hospitalRepository.save(entity));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReferentDto> findReferents(Long hospitalId) {
+        return hospitalRepository.findById(Objects.requireNonNull(hospitalId, "Hospital id mancante"))
+                .map(entity -> hospitalMapper.readReferents(entity.getReferentsJson()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ospedale non associato: " + hospitalId));
+    }
+
+    @Transactional
+    public List<ReferentDto> addReferent(Long hospitalId, ReferentDto referent) {
+        if (referent == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Referente mancante");
+        }
+        HospitalEntity entity = findAssociatedEntity(hospitalId);
+        List<ReferentDto> referents = new ArrayList<>(hospitalMapper.readReferents(entity.getReferentsJson()));
+        Long nextId = referents.stream().map(ReferentDto::getId).filter(Objects::nonNull).max(Long::compareTo).map(id -> id + 1).orElse(1L);
+        referents.add(referent.toBuilder().id(referent.getId() == null ? nextId : referent.getId()).build());
+        entity.setReferentsJson(hospitalMapper.writeReferents(referents));
+        hospitalRepository.save(entity);
+        return referents;
+    }
+
+    @Transactional
+    public List<ReferentDto> updateReferent(Long hospitalId, Long referentId, ReferentDto referent) {
+        if (referent == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Referente mancante");
+        }
+        HospitalEntity entity = findAssociatedEntity(hospitalId);
+        List<ReferentDto> referents = new ArrayList<>(hospitalMapper.readReferents(entity.getReferentsJson()));
+        int index = IntStream.range(0, referents.size()).filter(i -> Objects.equals(referents.get(i).getId(), referentId)).findFirst().orElse(-1);
+        if (index < 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Referente non trovato: " + referentId);
+        }
+        referents.set(index, referent.toBuilder().id(referentId).build());
+        entity.setReferentsJson(hospitalMapper.writeReferents(referents));
+        hospitalRepository.save(entity);
+        return referents;
+    }
+
+    @Transactional
+    public void removeReferent(Long hospitalId, Long referentId) {
+        HospitalEntity entity = findAssociatedEntity(hospitalId);
+        List<ReferentDto> referents = new ArrayList<>(hospitalMapper.readReferents(entity.getReferentsJson()));
+        if (!referents.removeIf(item -> Objects.equals(item.getId(), referentId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Referente non trovato: " + referentId);
+        }
+        entity.setReferentsJson(hospitalMapper.writeReferents(referents));
+        hospitalRepository.save(entity);
+    }
+
+    private HospitalEntity findAssociatedEntity(Long hospitalId) {
+        return hospitalRepository.findById(Objects.requireNonNull(hospitalId, "Hospital id mancante"))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ospedale non associato: " + hospitalId));
     }
 
     private List<HospitalDto> fetchAllHospitalsFromTicket() {

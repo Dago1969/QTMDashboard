@@ -38,6 +38,9 @@ public class StructureDepartmentEntity {
     @Column(name = "codice_disciplina", nullable = false, length = 100)
     private String codiceDisciplina;
 
+    @Column(name = "descrizione_disciplina", length = 255)
+    private String descrizioneDisciplina;
+
     @Column(name = "referents_json", nullable = false, length = 8000)
     private String referentsJson;
 }

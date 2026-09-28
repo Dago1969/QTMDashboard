@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.qtm.commonlib.dto.HospitalDto;
 import com.qtm.commonlib.dto.HospitalImportRequest;
 import com.qtm.commonlib.dto.HospitalOverviewDto;
+import com.qtm.commonlib.dto.ReferentDto;
 import com.qtm.dashboard.hospital.service.HospitalService;
 
 import lombok.RequiredArgsConstructor;
@@ -75,6 +77,28 @@ public class HospitalController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(hospital);
+    }
+
+    @GetMapping("/{id}/referents")
+    public ResponseEntity<List<ReferentDto>> findReferents(@PathVariable Long id) {
+        return ResponseEntity.ok(hospitalService.findReferents(id));
+    }
+
+    @PostMapping("/{id}/referents")
+    public ResponseEntity<List<ReferentDto>> addReferent(@PathVariable Long id, @RequestBody ReferentDto referent) {
+        return ResponseEntity.ok(hospitalService.addReferent(id, referent));
+    }
+
+    @PutMapping("/{id}/referents/{referentId}")
+    public ResponseEntity<List<ReferentDto>> updateReferent(@PathVariable Long id, @PathVariable Long referentId,
+            @RequestBody ReferentDto referent) {
+        return ResponseEntity.ok(hospitalService.updateReferent(id, referentId, referent));
+    }
+
+    @DeleteMapping("/{id}/referents/{referentId}")
+    public ResponseEntity<Void> removeReferent(@PathVariable Long id, @PathVariable Long referentId) {
+        hospitalService.removeReferent(id, referentId);
+        return ResponseEntity.noContent().build();
     }
     
 

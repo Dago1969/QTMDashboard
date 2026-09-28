@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260928-01-add-descrizione-disciplina-to-structure-department
+      author: copilot
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - not:
+            columnExists:
+              tableName: structure_department
+              columnName: descrizione_disciplina
+      changes:
+        - addColumn:
+            tableName: structure_department
+            columns:
+              - column:
+                  name: descrizione_disciplina
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: structure_department
+            columnName: descrizione_disciplina

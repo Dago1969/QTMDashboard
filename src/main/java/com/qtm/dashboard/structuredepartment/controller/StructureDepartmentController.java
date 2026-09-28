@@ -1,23 +1,27 @@
 package com.qtm.dashboard.structuredepartment.controller;
 
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentFilterOptionsDto;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentSourceDto;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentImportRequest;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentOverviewDto;
-import com.qtm.dashboard.structuredepartment.service.StructureDepartmentService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import com.qtm.commonlib.dto.ReferentDto;
+import com.qtm.commonlib.dto.StructureDepartmentFilterOptionsDto;
+import com.qtm.commonlib.dto.StructureDepartmentOverviewDto;
+import com.qtm.commonlib.dto.StructureDepartmentSourceDto;
+import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentImportRequest;
+import com.qtm.dashboard.structuredepartment.service.StructureDepartmentService;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Controller REST per consultare e gestire le associazioni locali dei reparti struttura.
@@ -55,6 +59,27 @@ public class StructureDepartmentController {
         List<StructureDepartmentOverviewDto> result = structureDepartmentService.findAllWithImportStatus(regionCode, aslCode, structureCode);
         log.info("[StructureDepartmentController] GET /api/structure-departments/overview returned {} records", result.size());
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}/referents")
+    public ResponseEntity<List<ReferentDto>> findReferents(@PathVariable Long id) {
+        return ResponseEntity.ok(structureDepartmentService.findReferents(id));
+    }
+
+    @PostMapping("/{id}/referents")
+    public ResponseEntity<List<ReferentDto>> addReferent(@PathVariable Long id, @RequestBody ReferentDto referent) {
+        return ResponseEntity.ok(structureDepartmentService.addReferent(id, referent));
+    }
+
+    @PutMapping("/{id}/referents/{referentId}")
+    public ResponseEntity<List<ReferentDto>> updateReferent(@PathVariable Long id, @PathVariable Long referentId, @RequestBody ReferentDto referent) {
+        return ResponseEntity.ok(structureDepartmentService.updateReferent(id, referentId, referent));
+    }
+
+    @DeleteMapping("/{id}/referents/{referentId}")
+    public ResponseEntity<Void> removeReferent(@PathVariable Long id, @PathVariable Long referentId) {
+        structureDepartmentService.removeReferent(id, referentId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/by-structure")
