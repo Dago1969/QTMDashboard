@@ -82,14 +82,14 @@ export interface SearchFilterChangeEvent {
               [type]="field.type"
               [(ngModel)]="filterModel[field.key]"
               [name]="field.key"
-              (input)="filterChanged.emit({ key: field.key, value: filterModel[field.key] ?? '' }); search(false)"
+              (input)="filterChanged.emit({ key: field.key, value: filterModel[field.key] }); search(false)"
             />
 
             <select
               *ngIf="field.type === 'select'"
               [(ngModel)]="filterModel[field.key]"
               [name]="field.key"
-              (change)="filterChanged.emit({ key: field.key, value: filterModel[field.key] ?? '' }); search(false)"
+              (change)="filterChanged.emit({ key: field.key, value: filterModel[field.key] }); search(false)"
             >
               <option [ngValue]="null">{{ field.emptyOptionLabelKey ? translate(field.emptyOptionLabelKey) : '' }}</option>
               <option *ngFor="let option of field.options ?? []" [value]="option.value">
