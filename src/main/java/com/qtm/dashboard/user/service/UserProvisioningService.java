@@ -906,7 +906,8 @@ public class UserProvisioningService {
         LinkedHashSet<String> candidateRoleNames = Stream.of(
                     requestedRole.get().getId(),
                     requestedRole.get().getName(),
-                    requestedRole.get().getDescription())
+                    requestedRole.get().getDescription(),
+                    "NURSE_QTM".equalsIgnoreCase(normalizedRoleId) ? "Nurse_QTM" : null)
                 .map(this::normalizeRoleName)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
