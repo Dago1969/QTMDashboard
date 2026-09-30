@@ -140,21 +140,12 @@ public class HospitalService {
     public List<HospitalOverviewDto> findAllWithImportStatus(String regionCode, String aslCode) {
         log.info("[HospitalService] findAllWithImportStatus - regionCode={}, aslCode={}", regionCode, aslCode);
 
-        // 1. Recupero entità locali da DB filtrando in base ai parametri
-        List<HospitalEntity> localHospitals;
-        
+        // QTMTicket contiene l'anagrafica completa; QTMDB contiene solo le associazioni locali.
+        List<HospitalDto> sourceHospitals = fetchAllHospitalsFromTicket();
+        Map<Long, HospitalEntity> localHospitals = hospitalRepository.findAll().stream()
+                .collect(Collectors.toMap(HospitalEntity::getId, entity -> entity, (left, right) -> left));
         boolean hasRegion = regionCode != null && !regionCode.isBlank();
         boolean hasAsl = aslCode != null && !aslCode.isBlank();
-
-        if (hasRegion && hasAsl) {
-            localHospitals = hospitalRepository.findByCodiceRegioneAndCodiceAsl(regionCode, aslCode);
-        } else if (hasRegion) {
-            localHospitals = hospitalRepository.findByCodiceRegione(regionCode);
-        } else if (hasAsl) {
-            localHospitals = hospitalRepository.findByCodiceAsl(aslCode);
-        } else {
-            localHospitals = hospitalRepository.findAll();
-        }
 
         Map<Long, ASLEntity> aslsById = aslRepository.findAll().stream()
             .filter(asl -> asl.getId() != null)
@@ -170,22 +161,44 @@ public class HospitalService {
                 asl -> asl,
                 (left, right) -> left));
 
-        // 2. Mappatura in HospitalOverviewDto
-        return localHospitals.stream()
-                .map(entity -> HospitalOverviewDto.builder()
-                        .id(entity.getId())
-                        .strutturaId(entity.getId())                           // id per il frontend Angular
-                        .struttura(entity.getStruttura())                      // denominazione struttura
-                        .codiceStruttura(entity.getCodiceStruttura())
-                        .codiceRegione(entity.getCodiceRegione())
-                        .codiceAsl(entity.getCodiceAsl())
-                        .asl(resolveAslName(entity, aslsById, aslsByCode, aslsByRegionAndCode))
-                        .aslId(entity.getAslId())
-                        .imported(true)                                        // Presente nel DB locale
-                        .note(entity.getNote())
-                        .build())
+        return sourceHospitals.stream()
+            .filter(hospital -> !hasRegion || normalizeCode(hospital.getCodiceRegione()).equals(normalizeCode(regionCode)))
+            .filter(hospital -> !hasAsl || normalizeCode(hospital.getCodiceAsl()).equals(normalizeCode(aslCode)))
+            .map(hospital -> toOverview(hospital, localHospitals.get(hospital.getId()), aslsById, aslsByCode, aslsByRegionAndCode))
                 .toList();
     }
+
+        private HospitalOverviewDto toOverview(HospitalDto hospital, HospitalEntity localEntity,
+            Map<Long, ASLEntity> aslsById, Map<String, ASLEntity> aslsByCode,
+            Map<String, ASLEntity> aslsByRegionAndCode) {
+        String asl = hospital.getAsl();
+        if (asl == null && hospital.getCodiceAsl() != null) {
+            asl = resolveAslName(HospitalEntity.builder()
+                .codiceRegione(hospital.getCodiceRegione())
+                .codiceAsl(hospital.getCodiceAsl())
+                .aslId(hospital.getAslId())
+                .build(), aslsById, aslsByCode, aslsByRegionAndCode);
+        }
+        return HospitalOverviewDto.builder()
+            .id(hospital.getId())
+            .strutturaId(hospital.getId())
+            .anno(hospital.getAnno())
+            .codiceRegione(hospital.getCodiceRegione())
+            .regione(hospital.getRegione())
+            .codiceAsl(hospital.getCodiceAsl())
+            .asl(asl)
+            .codiceStruttura(hospital.getCodiceStruttura())
+            .struttura(hospital.getStruttura())
+            .comune(hospital.getComune())
+            .siglaProvincia(hospital.getSiglaProvincia())
+            .indirizzo(hospital.getIndirizzo())
+            .hospitalTypeId(hospital.getHospitalTypeId())
+            .tipoStruttura(hospital.getTipoStruttura())
+            .aslId(hospital.getAslId())
+            .imported(localEntity != null)
+            .note(localEntity != null ? localEntity.getNote() : null)
+            .build();
+        }
 
     private String resolveAslName(HospitalEntity hospital, Map<Long, ASLEntity> aslsById,
             Map<String, ASLEntity> aslsByCode, Map<String, ASLEntity> aslsByRegionAndCode) {
