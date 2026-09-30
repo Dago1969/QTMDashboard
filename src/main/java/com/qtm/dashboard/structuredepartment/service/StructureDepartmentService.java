@@ -60,7 +60,7 @@ public class StructureDepartmentService {
 	@Autowired
 	public StructureDepartmentService(ASLRepository aslRepository, HospitalRepository hospitalRepository,
 			StructureDepartmentRepository structureDepartmentRepository,
-			@Value("${app.ticket.base-url:http://localhost:8084/api}") String ticketBaseUrl) {
+			@Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl) {
 		this(aslRepository, hospitalRepository, structureDepartmentRepository,
 				RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build(),
 				RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build(), ticketBaseUrl);
@@ -495,7 +495,7 @@ public class StructureDepartmentService {
 		}
 		if (exception instanceof ResourceAccessException) {
 			String detail = String.format(
-					"QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che app.ticket.base-url sia corretto.",
+					"QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che qtm.ticket.base-url sia corretto.",
 					targetUrl);
 			return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
 		}
@@ -528,7 +528,7 @@ public class StructureDepartmentService {
 	}
 
 	private static String deriveTicketApiRootUrl(String ticketBaseUrl) {
-		String normalizedBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante").trim();
+		String normalizedBaseUrl = Objects.requireNonNull(ticketBaseUrl, "qtm.ticket.base-url mancante").trim();
 		if (normalizedBaseUrl.endsWith("/")) {
 			normalizedBaseUrl = normalizedBaseUrl.substring(0, normalizedBaseUrl.length() - 1);
 		}
