@@ -447,16 +447,18 @@ public class StructureDepartmentService {
 		StructureDepartmentEntity localEntity = structureDepartmentRepository
 				.findByCodiceStrutturaAndCodiceDisciplina(sourceDepartment.getCodiceStruttura(), sourceDepartment.getCodiceDisciplina())
 				.orElse(null);
-		if (localEntity == null || !StringUtils.hasText(localEntity.getDescrizioneDisciplina())) {
+		if (localEntity == null) {
 			return sourceDepartment;
 		}
 
 		return StructureDepartmentSourceDto.builder()
-			.id(sourceDepartment.getId())
+			// Patients reference the local structure_department primary key, not the QTMTicket source id.
+			.id(localEntity.getId())
 			.codiceStruttura(sourceDepartment.getCodiceStruttura())
 			.codiceDisciplina(sourceDepartment.getCodiceDisciplina())
 			.disciplina(sourceDepartment.getDisciplina())
-			.descrizioneDisciplina(localEntity.getDescrizioneDisciplina())
+			.descrizioneDisciplina(StringUtils.hasText(localEntity.getDescrizioneDisciplina())
+					? localEntity.getDescrizioneDisciplina() : sourceDepartment.getDescrizioneDisciplina())
 			.indirizzo(sourceDepartment.getIndirizzo())
 			.build();
 	}
