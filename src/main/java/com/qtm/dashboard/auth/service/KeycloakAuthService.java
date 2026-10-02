@@ -1,13 +1,19 @@
 package com.qtm.dashboard.auth.service;
 
-import com.qtm.dashboard.auth.dto.ChangePasswordRequest;
-import com.qtm.dashboard.auth.dto.LoginRequest;
-import com.qtm.dashboard.auth.dto.LoginResponse;
-import com.qtm.dashboard.config.KeycloakProperties;
-import com.qtm.dashboard.user.entity.UserEntity;
-import com.qtm.dashboard.user.repository.UserRepository;
-import jakarta.ws.rs.ForbiddenException;
-import lombok.extern.slf4j.Slf4j;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
@@ -17,26 +23,22 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Arrays;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import com.qtm.dashboard.auth.dto.ChangePasswordRequest;
+import com.qtm.dashboard.auth.dto.LoginRequest;
+import com.qtm.dashboard.auth.dto.LoginResponse;
+import com.qtm.dashboard.config.KeycloakProperties;
+import com.qtm.dashboard.user.entity.UserEntity;
+import com.qtm.dashboard.user.repository.UserRepository;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import jakarta.ws.rs.ForbiddenException;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service dedicato all'accesso verso endpoint OIDC token di Keycloak.
