@@ -5,32 +5,26 @@ spring:
       mode: never
   datasource:
     # FIXME Francesco: URL DB componibile; DB_NAME usa il realm-code solo come fallback.
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME_PREFIX:qtmdashboard_}${DB_NAME:${APP_KEYCLOAK_REALM_CODE:}}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${DB_HOST:qtmdev.quicare.com}:${DB_PORT:3306}/${DB_NAME_PREFIX:qtmdashboard_}${DB_NAME:${APP_KEYCLOAK_REALM_CODE:}}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:dago}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 # Porta del client A (usata per parametrizzazione liquibase o app)
-portClientA: 80 #FIXME francesco la porta non serve per i frontend... metto 80 che è la standard
+portClientA: ${PORT_CLIENT_A:80}
 app:
   keycloak:
     # Default locale per esecuzione da Eclipse; resta possibile fare override via environment.
     server-url: ${APP_KEYCLOAK_SERVER_URL:http://localhost:8085}
     realm-code: ${APP_KEYCLOAK_REALM_CODE:QTM}
 
-# FIXME Francesco: esempi reali DEV temporanei; spostare credenziali e valori operativi fuori dal repository.
-DB_HOST: qtmdev.quicare.com
-# Usare lo stesso codice canonico per il realm e come suffisso del database.
-# DB_NAME rimane opzionale: se omesso usa APP_KEYCLOAK_REALM_CODE.
-# Database risultante con i valori sotto: qtmdashboard_Lecigimon.
+# Il database usa DB_HOST/DB_PORT e DB_NAME, con fallback al realm corrente.
 DB_NAME_PREFIX: qtmdashboard_
 SPRING_DATASOURCE_USERNAME: root
 SPRING_DATASOURCE_PASSWORD: dago
 #PRING_DATASOURCE_PASSWORD: qtm@dev#pwd33
 #APP_KEYCLOAK_REALM_CODE: Lecigimon
 #APP_KEYCLOAK_SERVER_URL: https://auth.qtmdev.quicare.com
-# FIXME Francesco: il frontend Tenants locale usa la porta 4201; 4200 e la Dashboard.
-APP_TENANTS_BASE_URL: http://localhost:4201
 # FIXME Francesco: logging di autenticazione temporaneo, limitato al profilo dev.
 logging:
   level:

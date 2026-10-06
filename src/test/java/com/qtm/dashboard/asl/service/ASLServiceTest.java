@@ -1,6 +1,9 @@
 package com.qtm.dashboard.asl.service;
 
+import com.qtm.commonlib.api.HealthStructureApi;
 import com.qtm.commonlib.dto.ASLDto;
+import com.qtm.commonlib.dto.ProvinceDto;
+import com.qtm.commonlib.dto.RegionDto;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.mapper.ASLMapper;
 import com.qtm.dashboard.asl.repository.ASLRepository;
@@ -43,7 +46,7 @@ class ASLServiceTest {
 
     @Test
     void findAllWithImportStatusShouldExposeAnnoProvinceAndRegion() {
-        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://ticket.test");
+        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://health-structure.test");
 
         ASLDto source = ASLDto.builder()
                 .id(103L)
@@ -62,20 +65,20 @@ class ASLServiceTest {
         localEntity.setId(103L);
         localEntity.setNote("nota locale");
 
-        TicketGeographyService.TicketRegion region = new TicketGeographyService.TicketRegion();
+        RegionDto region = new RegionDto();
         region.setId(13L);
-        region.setRegionCode("13");
+        region.setCode("13");
         region.setName("Abruzzo");
-        TicketGeographyService.TicketProvince province = new TicketGeographyService.TicketProvince();
+        ProvinceDto province = new ProvinceDto();
         province.setId(6L);
         province.setName("L'Aquila");
-        province.setRegion(region);
+        province.setRegionId(13L);
 
         when(aslRepository.findAll()).thenReturn(List.of(localEntity));
         when(ticketGeographyService.findProvinceById(6L)).thenReturn(java.util.Optional.of(province));
         when(ticketGeographyService.findRegionByCode("13")).thenReturn(java.util.Optional.of(region));
         doReturn(requestHeadersUriSpec).when(restClient).get();
-        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
+        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri(HealthStructureApi.ASL_PATH);
         when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(ASLDto[].class)).thenReturn(new ASLDto[]{source});
 
@@ -91,7 +94,7 @@ class ASLServiceTest {
 
     @Test
     void findAllWithImportStatusShouldUseSourceRegionCodeWhenCityRegionIsInconsistent() {
-        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://ticket.test");
+        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://health-structure.test");
 
         ASLDto source = ASLDto.builder()
                 .id(91L)
@@ -102,13 +105,13 @@ class ASLServiceTest {
                 .indirizzo("VIA ARIOSTO 3/9")
                 .build();
 
-        TicketGeographyService.TicketRegion lazio = new TicketGeographyService.TicketRegion();
-        lazio.setId(12L); lazio.setRegionCode("12"); lazio.setName("Lazio");
+        RegionDto lazio = new RegionDto();
+        lazio.setId(12L); lazio.setCode("12"); lazio.setName("Lazio");
 
         when(aslRepository.findAll()).thenReturn(List.of());
         when(ticketGeographyService.findRegionByCode("12")).thenReturn(java.util.Optional.of(lazio));
         doReturn(requestHeadersUriSpec).when(restClient).get();
-        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
+        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri(HealthStructureApi.ASL_PATH);
         when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(ASLDto[].class)).thenReturn(new ASLDto[]{source});
 
@@ -122,7 +125,7 @@ class ASLServiceTest {
 
     @Test
     void findAllWithImportStatusShouldPreferSourceProvinceIdForProvinceDisplay() {
-        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://ticket.test");
+        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://health-structure.test");
 
         ASLDto source = ASLDto.builder()
                 .id(91L)
@@ -135,16 +138,16 @@ class ASLServiceTest {
                 .indirizzo("VIA ARIOSTO 3/9")
                 .build();
 
-        TicketGeographyService.TicketRegion lazio = new TicketGeographyService.TicketRegion();
-        lazio.setId(12L); lazio.setRegionCode("12"); lazio.setName("Lazio");
-        TicketGeographyService.TicketProvince roma = new TicketGeographyService.TicketProvince();
-        roma.setId(58L); roma.setName("Roma"); roma.setRegion(lazio);
+        RegionDto lazio = new RegionDto();
+        lazio.setId(12L); lazio.setCode("12"); lazio.setName("Lazio");
+        ProvinceDto roma = new ProvinceDto();
+        roma.setId(58L); roma.setName("Roma"); roma.setRegionId(12L);
 
         when(aslRepository.findAll()).thenReturn(List.of());
         when(ticketGeographyService.findProvinceById(58L)).thenReturn(java.util.Optional.of(roma));
         when(ticketGeographyService.findRegionByCode("12")).thenReturn(java.util.Optional.of(lazio));
         doReturn(requestHeadersUriSpec).when(restClient).get();
-        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl");
+        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri(HealthStructureApi.ASL_PATH);
         when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(ASLDto[].class)).thenReturn(new ASLDto[]{source});
 
@@ -158,7 +161,7 @@ class ASLServiceTest {
 
     @Test
     void importFromSourceShouldPersistEntitiesUsingProvidedIds() {
-        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://ticket.test");
+        ASLService aslService = new ASLService(aslRepository, aslMapper, ticketGeographyService, restClient, "http://health-structure.test");
 
         ASLDto dto = ASLDto.builder()
                 .id(321L)
@@ -170,7 +173,7 @@ class ASLServiceTest {
         ASLEntity entity = new ASLEntity();
         entity.setId(321L);
         doReturn(requestHeadersUriSpec).when(restClient).get();
-        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("/asl/{id}", 321L);
+        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri(HealthStructureApi.ASL_BY_ID_PATH, 321L);
         when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(String.class)).thenReturn("""
                 {

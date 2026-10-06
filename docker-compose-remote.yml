@@ -1,0 +1,37 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  backend:
+    image: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:17-jre-alpine}
+    pull_policy: if_not_present
+    container_name: ${SERVICE_CONTAINER_NAME}
+    restart: unless-stopped
+    working_dir: /opt/app
+    command: ["java", "-jar", "/opt/app/${SERVICE_JAR}"]
+    volumes:
+      - ./backend/app:/opt/app:ro
+    env_file:
+      - env-remote
+    networks:
+      service-network:
+        aliases:
+          - ${SERVICE_NETWORK_ALIAS}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${SERVICE_NETWORK}"
+      - "traefik.http.routers.${SERVICE_CONTAINER_NAME}.rule=Host(`${SERVICE_DOMAIN}`) && PathPrefix(`${SERVICE_PATH}`)"
+      - "traefik.http.routers.${SERVICE_CONTAINER_NAME}.priority=${SERVICE_ROUTER_PRIORITY}"
+      - "traefik.http.routers.${SERVICE_CONTAINER_NAME}.entrypoints=websecure"
+      - "traefik.http.routers.${SERVICE_CONTAINER_NAME}.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.${SERVICE_CONTAINER_NAME}.service=${SERVICE_CONTAINER_NAME}"
+      - "traefik.http.services.${SERVICE_CONTAINER_NAME}.loadbalancer.server.port=${SERVICE_INTERNAL_PORT}"
+    logging: *default-logging
+
+networks:
+  service-network:
+    external: true
+    name: ${SERVICE_NETWORK}

@@ -10,20 +10,27 @@ import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
+import jakarta.servlet.http.HttpServletRequest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qtm.commonlib.api.HealthStructureApi;
 import com.qtm.commonlib.dto.ASLDto;
 import com.qtm.commonlib.dto.ASLOverviewDto;
 import com.qtm.commonlib.dto.ReferentDto;
+import com.qtm.commonlib.dto.ProvinceDto;
+import com.qtm.commonlib.dto.RegionDto;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.mapper.ASLMapper;
 import com.qtm.dashboard.asl.repository.ASLRepository;
@@ -38,34 +45,45 @@ public class ASLService {
     private final ASLMapper aslMapper;
     private final com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService;
     private final RestClient restClient;
-    private final String ticketBaseUrl;
+    private final String healthStructureBaseUrl;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public ASLService(
             ASLRepository aslRepository,
             ASLMapper aslMapper,
-                com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService,
-                @Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl
+            com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService,
+            @Value("${services.qtm-health-structure-service.url:http://localhost:8089/api/health-structure}") String healthStructureBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
         this.ticketGeographyService = ticketGeographyService;
-        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
-        // RestClient usato per chiamare le API QTMTicket; la base URL è configurabile in application.properties
-        this.restClient = RestClient.builder().baseUrl(this.ticketBaseUrl).build();
-        log.info("[ASLService] inizializzato con ticketBaseUrl={}", ticketBaseUrl);
+        this.healthStructureBaseUrl = Objects.requireNonNull(healthStructureBaseUrl, "services.qtm-health-structure-service.url mancante");
+        this.restClient = RestClient.builder()
+                .baseUrl(this.healthStructureBaseUrl)
+                .requestInterceptor((request, body, execution) -> {
+                    if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+                        HttpServletRequest currentRequest = attributes.getRequest();
+                        String authorization = currentRequest.getHeader(HttpHeaders.AUTHORIZATION);
+                        if (authorization != null && !authorization.isBlank()) {
+                            request.getHeaders().set(HttpHeaders.AUTHORIZATION, authorization);
+                        }
+                    }
+                    return execution.execute(request, body);
+                })
+                .build();
+        log.info("[ASLService] inizializzato con healthStructureBaseUrl={}", healthStructureBaseUrl);
     }
 
     ASLService(
             ASLRepository aslRepository,
             ASLMapper aslMapper,
             RestClient restClient,
-            String ticketBaseUrl
+            String healthStructureBaseUrl
     ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
-        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
+        this.healthStructureBaseUrl = Objects.requireNonNull(healthStructureBaseUrl, "services.qtm-health-structure-service.url mancante");
         this.restClient = restClient;
         this.ticketGeographyService = null;
     }
@@ -76,12 +94,12 @@ public class ASLService {
             ASLMapper aslMapper,
             com.qtm.dashboard.geography.TicketGeographyService ticketGeographyService,
             RestClient restClient,
-            String ticketBaseUrl
+            String healthStructureBaseUrl
         ) {
         this.aslRepository = aslRepository;
         this.aslMapper = aslMapper;
         this.ticketGeographyService = ticketGeographyService;
-        this.ticketBaseUrl = Objects.requireNonNull(ticketBaseUrl, "app.ticket.base-url mancante");
+        this.healthStructureBaseUrl = Objects.requireNonNull(healthStructureBaseUrl, "services.qtm-health-structure-service.url mancante");
         this.restClient = restClient;
         }
 
@@ -99,20 +117,6 @@ public class ASLService {
                 .orElse(null);
     }
 
-//    @Transactional(readOnly = true)
-//    public List<ASLOverviewDto> findAllWithImportStatus(String regionCode) {
-//        log.info("[ASLService] richiesta overview ASL con stato import");
-//        List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
-//        Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
-//                .collect(Collectors.toMap(ASLEntity::getId, entity -> entity));
-//        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> provinceMap = loadProvincesById(sourceAsls);
-//        Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap = loadRegionsByCode(sourceAsls);
-//
-//        return sourceAsls.stream()
-//            .map(source -> toOverviewDto(source, localAslMap.get(source.getId()), provinceMap.get(source.getProvinceId()), regionMap))
-//                .toList();
-//    }
-    
         @Transactional(readOnly = true)
         public List<ASLOverviewDto> findAllWithImportStatus() {
         return findAllWithImportStatus(null);
@@ -122,7 +126,7 @@ public class ASLService {
         public List<ASLOverviewDto> findAllWithImportStatus(String regionCode) {
         log.info("[ASLService] findAllWithImportStatus - regionCode={}", regionCode);
 
-        List<ASLDto> sourceAsls = fetchAllAslsFromTicket();
+        List<ASLDto> sourceAsls = fetchAllAslsFromHealthStructure();
         Map<Long, ASLEntity> localAslMap = aslRepository.findAll().stream()
             .filter(entity -> entity.getId() != null)
             .collect(Collectors.toMap(ASLEntity::getId, entity -> entity, (left, right) -> left));
@@ -132,9 +136,9 @@ public class ASLService {
             .filter(source -> normalizedFilter == null
                 || normalizedFilter.equals(normalizeRegionCode(source.getCodiceRegione())))
             .toList();
-        Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> provinceMap =
+        Map<Long, ProvinceDto> provinceMap =
             loadProvincesById(filteredSourceAsls);
-        Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap =
+        Map<String, RegionDto> regionMap =
             loadRegionsByCode(filteredSourceAsls);
 
         return filteredSourceAsls.stream()
@@ -147,21 +151,16 @@ public class ASLService {
          * Arricchisce l'overview ASL con anno e anagrafiche geografiche derivate dal comune sorgente.
          */
         private ASLOverviewDto toOverviewDto(ASLDto source, ASLEntity localEntity,
-                                             com.qtm.dashboard.geography.TicketGeographyService.TicketProvince sourceProvince,
-                                             Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> regionMap) {
-        com.qtm.dashboard.geography.TicketGeographyService.TicketProvince ticketProvince = sourceProvince;
-        com.qtm.dashboard.geography.TicketGeographyService.TicketRegion ticketRegion = null;
+                                             ProvinceDto sourceProvince,
+                                             Map<String, RegionDto> regionMap) {
+        ProvinceDto ticketProvince = sourceProvince;
+        RegionDto ticketRegion = null;
         String normalizedRegionCode = normalizeRegionCode(source.getCodiceRegione());
         if (ticketGeographyService != null && normalizedRegionCode != null) {
             ticketRegion = ticketGeographyService.findRegionByCode(normalizedRegionCode).orElse(null);
         }
 
-        var provinceRegion = ticketProvince != null ? ticketProvince.getRegion() : null;
-        com.qtm.dashboard.geography.TicketGeographyService.TicketRegion regionFromCode = normalizedRegionCode == null ? null : regionMap.get(normalizedRegionCode);
-
-        boolean provinceRegionMatchesSource = provinceRegion != null
-            && normalizedRegionCode != null
-            && normalizedRegionCode.equals(normalizeRegionCode(provinceRegion.getRegionCode()));
+        RegionDto regionFromCode = normalizedRegionCode == null ? null : regionMap.get(normalizedRegionCode);
 
         Long resolvedProvinceId = null;
         String resolvedProvinceName = null;
@@ -170,7 +169,7 @@ public class ASLService {
             resolvedProvinceName = ticketProvince.getName();
         }
 
-        var resolvedRegion = (ticketRegion != null) ? ticketRegion : (regionFromCode != null ? regionFromCode : (provinceRegionMatchesSource ? provinceRegion : null));
+        var resolvedRegion = (ticketRegion != null) ? ticketRegion : regionFromCode;
         return ASLOverviewDto.builder()
             .id(source.getId())
             .aslId(source.getId())
@@ -191,7 +190,7 @@ public class ASLService {
             .build();
         }
 
-        private Map<Long, com.qtm.dashboard.geography.TicketGeographyService.TicketProvince> loadProvincesById(List<ASLDto> sourceAsls) {
+        private Map<Long, ProvinceDto> loadProvincesById(List<ASLDto> sourceAsls) {
         List<Long> provinceIds = sourceAsls.stream()
             .map(ASLDto::getProvinceId)
             .filter(Objects::nonNull)
@@ -200,10 +199,10 @@ public class ASLService {
         return provinceIds.stream()
             .map(id -> ticketGeographyService == null ? null : ticketGeographyService.findProvinceById(id).orElse(null))
             .filter(Objects::nonNull)
-            .collect(Collectors.toMap(com.qtm.dashboard.geography.TicketGeographyService.TicketProvince::getId, province -> province));
+            .collect(Collectors.toMap(ProvinceDto::getId, province -> province));
         }
 
-        private Map<String, com.qtm.dashboard.geography.TicketGeographyService.TicketRegion> loadRegionsByCode(List<ASLDto> sourceAsls) {
+        private Map<String, RegionDto> loadRegionsByCode(List<ASLDto> sourceAsls) {
         List<String> regionCodes = sourceAsls.stream()
             .map(ASLDto::getCodiceRegione)
             .map(this::normalizeRegionCode)
@@ -213,7 +212,7 @@ public class ASLService {
         return regionCodes.stream()
             .map(code -> ticketGeographyService == null ? null : ticketGeographyService.findRegionByCode(code).orElse(null))
             .filter(Objects::nonNull)
-            .collect(Collectors.toMap(region -> normalizeRegionCode(region.getRegionCode()), region -> region));
+            .collect(Collectors.toMap(region -> normalizeRegionCode(region.getCode()), region -> region));
         }
 
         private String normalizeRegionCode(String regionCode) {
@@ -315,30 +314,30 @@ public class ASLService {
         log.info("[ASLService] importazione ASL da sourceIds={}", sourceIds);
         return sourceIds.stream()
                 .filter(Objects::nonNull)
-                .map(this::importOneFromTicket)
+                .map(this::importOneFromHealthStructure)
                 .toList();
     }
 
     /**
-     * Importa una singola ASL da QTMTicket e la salva nella tabella locale.
+    * Importa una singola ASL dal catalogo sanitario e la salva nella tabella locale.
      * Il note locale viene preservato se l'ASL esiste già.
      */
-    private ASLDto importOneFromTicket(Long sourceId) {
-        log.info("[ASLService] chiamata QTMTicket per import ASL id={}", sourceId);
+    private ASLDto importOneFromHealthStructure(Long sourceId) {
+        log.info("[ASLService] chiamata Health Structure per import ASL id={}", sourceId);
         try {
             String responseBody = restClient.get()
-                    .uri("/asl/{id}", sourceId)
+                .uri(HealthStructureApi.ASL_BY_ID_PATH, sourceId)
                     .retrieve()
                     .body(String.class);
 
             if (responseBody == null || responseBody.isBlank()) {
-                throw new IllegalArgumentException("ASL non trovata in QTMTicket: " + sourceId);
+                throw new IllegalArgumentException("ASL non trovata nel catalogo sanitario: " + sourceId);
             }
 
             JsonNode payload = objectMapper.readTree(responseBody);
             ASLDto dto = objectMapper.treeToValue(payload, ASLDto.class);
             if (dto == null) {
-                throw new IllegalArgumentException("ASL non trovata in QTMTicket: " + sourceId);
+                throw new IllegalArgumentException("ASL non trovata nel catalogo sanitario: " + sourceId);
             }
 
             dto.setId(sourceId);
@@ -354,44 +353,44 @@ public class ASLService {
                         entity.setReferentsJson(existing.getReferentsJson());
                     });
             ASLDto saved = aslMapper.entityToDto(aslRepository.save(entity));
-            log.info("[ASLService] importOneFromTicket id={} salvata con codiceAzienda={} codiceRegione={}", sourceId, entity.getCodiceAzienda(), entity.getCodiceRegione());
+            log.info("[ASLService] importOneFromHealthStructure id={} salvata con codiceAzienda={} codiceRegione={}", sourceId, entity.getCodiceAzienda(), entity.getCodiceRegione());
             return saved;
         } catch (JsonProcessingException ex) {
-            log.error("[ASLService] errore parsing JSON importOneFromTicket id={}", sourceId, ex);
-            throw mapTicketException(ex, "/asl/" + sourceId);
+            log.error("[ASLService] errore parsing JSON importOneFromHealthStructure id={}", sourceId, ex);
+            throw mapHealthStructureException(ex, HealthStructureApi.ASL_BY_ID_PATH.replace("{id}", sourceId.toString()));
         } catch (Exception ex) {
-            log.error("[ASLService] errore importOneFromTicket id={}", sourceId, ex);
-            throw mapTicketException(ex, "/asl/" + sourceId);
+            log.error("[ASLService] errore importOneFromHealthStructure id={}", sourceId, ex);
+            throw mapHealthStructureException(ex, HealthStructureApi.ASL_BY_ID_PATH.replace("{id}", sourceId.toString()));
         }
     }
 
     /**
-     * Recupera l'elenco completo delle ASL pubblicate da QTMTicket.
+    * Recupera l'elenco completo delle ASL pubblicate dal catalogo sanitario.
      */
-    private List<ASLDto> fetchAllAslsFromTicket() {
-        log.info("[ASLService] chiamata QTMTicket per fetch ASL lista /asl");
+    private List<ASLDto> fetchAllAslsFromHealthStructure() {
+        log.info("[ASLService] chiamata Health Structure per fetch ASL lista");
         try {
             ASLDto[] sourceAsls = restClient.get()
-                    .uri("/asl")
+                .uri(HealthStructureApi.ASL_PATH)
                     .retrieve()
                     .body(ASLDto[].class);
             int size = sourceAsls == null ? 0 : sourceAsls.length;
-            log.info("[ASLService] fetchAllAslsFromTicket restituisce {} record", size);
+            log.info("[ASLService] fetchAllAslsFromHealthStructure restituisce {} record", size);
             return sourceAsls == null ? new ArrayList<>() : Arrays.asList(sourceAsls);
         } catch (Exception ex) {
-            log.error("[ASLService] errore fetchAllAslsFromTicket", ex);
-            throw mapTicketException(ex, "/asl");
+            log.error("[ASLService] errore fetchAllAslsFromHealthStructure", ex);
+            throw mapHealthStructureException(ex, HealthStructureApi.ASL_PATH);
         }
     }
 
-    private ResponseStatusException mapTicketException(Exception exception, String resourcePath) {
-        String targetUrl = ticketBaseUrl + resourcePath;
+    private ResponseStatusException mapHealthStructureException(Exception exception, String resourcePath) {
+        String targetUrl = healthStructureBaseUrl + resourcePath;
         if (exception instanceof ResponseStatusException responseStatusException) {
             return responseStatusException;
         }
         if (exception instanceof RestClientResponseException restClientResponseException) {
             String detail = String.format(
-                    "QTMTicket ha risposto con stato %s durante la chiamata %s.",
+                    "QTM Health Structure ha risposto con stato %s durante la chiamata %s.",
                     restClientResponseException.getStatusCode().value(),
                     targetUrl
             );
@@ -399,13 +398,13 @@ public class ASLService {
         }
         if (exception instanceof ResourceAccessException) {
             String detail = String.format(
-                    "QTMTicket non raggiungibile su %s. Verifica che il servizio sia avviato e che qtm.ticket.base-url sia corretto.",
+                    "QTM Health Structure non raggiungibile su %s. Verifica che il servizio sia avviato e che services.qtm-health-structure-service.url sia corretto.",
                     targetUrl
             );
             return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
         }
         String detail = String.format(
-                "Errore durante la chiamata a QTMTicket su %s.",
+                "Errore durante la chiamata a QTM Health Structure su %s.",
                 targetUrl
         );
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, detail, exception);
