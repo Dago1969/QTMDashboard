@@ -97,6 +97,8 @@ app:
     base-url: ${APP_TICKET_BASE_URL:http://localhost:8084/api/ticket}
 
 services:
+  ticket-service:
+    url: ${TICKET_SERVICE_URL:${app.ticket.base-url:http://localhost:8084/api/ticket}}
   qtm-geography-service:
     url: ${QTM_GEOGRAPHY_SERVICE_URL:http://localhost:8088/api/geography}
   qtm-health-structure-service:

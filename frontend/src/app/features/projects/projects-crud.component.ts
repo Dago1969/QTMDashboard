@@ -15,6 +15,7 @@ interface ProjectDraft {
   logo: string;
   emailSender: string;
   jsonVisit: string;
+  jsonSurvey: string;
   dataInizio: string;
   dataFine: string;
   footer: string;
@@ -90,6 +91,11 @@ interface ProjectDraft {
       </div>
 
       <div *ngIf="step === 2" class="projects-summary-grid">
+        <div class="projects-field projects-field-wide">
+          <label for="project-json-survey">{{ t('projects.field.jsonSurvey') }}</label>
+          <textarea id="project-json-survey" rows="12" [(ngModel)]="draft.jsonSurvey"></textarea>
+        </div>
+
         <div class="projects-summary-item">
           <strong>{{ t('projects.field.tenant') }}</strong>
           <span>{{ selectedTenantLabel }}</span>
@@ -207,6 +213,7 @@ export class ProjectsCrudComponent implements OnInit, OnDestroy {
     logo: '',
     emailSender: '',
     jsonVisit: '',
+    jsonSurvey: '',
     dataInizio: '',
     dataFine: '',
     footer: ''
@@ -292,6 +299,13 @@ export class ProjectsCrudComponent implements OnInit, OnDestroy {
   }
 
   confirmCreation(): void {
+    this.errorMessage = '';
+
+    if (!this.isSurveyJsonValid()) {
+      this.errorMessage = this.t('projects.wizard.validation.surveyJsonInvalid');
+      return;
+    }
+
     if (this.projectId !== null) {
       this.updateProject();
       return;
@@ -325,6 +339,19 @@ export class ProjectsCrudComponent implements OnInit, OnDestroy {
     return trimmed && trimmed.length > 0 ? trimmed : '-';
   }
 
+  private isSurveyJsonValid(): boolean {
+    if (!this.draft.jsonSurvey.trim()) {
+      return true;
+    }
+
+    try {
+      JSON.parse(this.draft.jsonSurvey);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private loadProject(id: number): void {
     this.subscriptions.add(
       this.projectApiService.getProject(id).subscribe({
@@ -337,6 +364,7 @@ export class ProjectsCrudComponent implements OnInit, OnDestroy {
             logo: project.logo ?? '',
             emailSender: project.emailSender ?? '',
             jsonVisit: project.jsonVisit ?? '',
+            jsonSurvey: project.jsonSurvey ?? '',
             dataInizio: project.dataInizio ?? '',
             dataFine: project.dataFine ?? '',
             footer: project.footer ?? ''
@@ -381,11 +409,11 @@ export class ProjectsCrudComponent implements OnInit, OnDestroy {
       logo: this.draft.logo.trim(),
       emailSender: this.draft.emailSender.trim(),
       jsonVisit: this.draft.jsonVisit.trim(),
+      jsonSurvey: this.draft.jsonSurvey.trim(),
       dataInizio: this.draft.dataInizio,
       dataFine: this.draft.dataFine,
       footer: this.draft.footer.trim()
     };
-
     this.subscriptions.add(
       this.projectApiService.createProject(payload).subscribe({
         next: () => {
@@ -412,10 +440,12 @@ export class ProjectsCrudComponent implements OnInit, OnDestroy {
       logo: this.draft.logo.trim(),
       emailSender: this.draft.emailSender.trim(),
       jsonVisit: this.draft.jsonVisit.trim(),
+      jsonSurvey: this.draft.jsonSurvey.trim(),
       dataInizio: this.draft.dataInizio,
       dataFine: this.draft.dataFine,
       footer: this.draft.footer.trim()
     };
+    delete payload.administrators;
 
     this.subscriptions.add(
       this.projectApiService.updateProject(this.projectId, payload).subscribe({

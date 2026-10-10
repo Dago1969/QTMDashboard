@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20261010-03-restore-tripodi-superadmin-pilota
+      author: copilot
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: user_role_project
+          - tableExists:
+              tableName: users
+          - tableExists:
+              tableName: roles
+          - tableExists:
+              tableName: tenant_app_pointer
+          - tableExists:
+              tableName: projects
+          - sqlCheck:
+              expectedResult: "1"
+              sql: SELECT COUNT(*) FROM users WHERE username = 'francesco.tripodi'
+          - sqlCheck:
+              expectedResult: "1"
+              sql: SELECT COUNT(*) FROM roles WHERE id = 'SUPER_ADMIN'
+          - sqlCheck:
+              expectedResult: "1"
+              sql: SELECT COUNT(*) FROM tenant_app_pointer WHERE id = 1
+          - sqlCheck:
+              expectedResult: "1"
+              sql: SELECT COUNT(*) FROM projects WHERE code = 'PILOTA' AND tenant_id = 1
+          - sqlCheck:
+              expectedResult: "0"
+              sql: |
+                SELECT COUNT(*)
+                FROM user_role_project urp
+                JOIN users u ON u.id = urp.user_id
+                JOIN roles r ON r.id = urp.role_id
+                JOIN projects p ON p.id = urp.project_id
+                WHERE u.username = 'francesco.tripodi'
+                  AND urp.tenant_id = 1
+                  AND r.id = 'SUPER_ADMIN'
+                  AND p.code = 'PILOTA'
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO user_role_project (user_id, tenant_id, role_id, project_id)
+              SELECT u.id, t.id, r.id, p.id
+              FROM users u
+              JOIN tenant_app_pointer t ON t.id = 1
+              JOIN roles r ON r.id = 'SUPER_ADMIN'
+              JOIN projects p ON p.tenant_id = t.id AND p.code = 'PILOTA'
+              WHERE u.username = 'francesco.tripodi'

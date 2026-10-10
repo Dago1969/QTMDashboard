@@ -59,10 +59,13 @@ public class ProjectService {
         entity.setEmailSender(normalizeOptional(projectDto.getEmailSender()));
         entity.setDataInizio(projectDto.getDataInizio());
         entity.setDataFine(projectDto.getDataFine());
-        entity.setAdministrators(projectDto.getAdministrators());
+        entity.setAdministrators(projectDto.getAdministrators() == null
+            ? java.util.List.of()
+            : projectDto.getAdministrators());
         entity.setRoleIds(defaultList(projectDto.getRoleIds()));
         entity.setEnabledModuleCodes(defaultList(projectDto.getEnabledModuleCodes()));
         entity.setJsonVisit(normalizeOptional(projectDto.getJsonVisit()));
+        entity.setJsonSurvey(normalizeOptional(projectDto.getJsonSurvey()));
         log.debug("[ProjectService] Entity da salvare: {}", entity);
         ProjectEntity savedProject = projectRepository.save(entity);
         projectAdministratorAssignmentService.synchronizeProjectAdministrators(savedProject);
@@ -119,12 +122,17 @@ public class ProjectService {
         entity.setEmailSender(normalizeOptional(projectDto.getEmailSender()));
         entity.setDataInizio(projectDto.getDataInizio());
         entity.setDataFine(projectDto.getDataFine());
-        entity.setAdministrators(projectDto.getAdministrators());
+        if (projectDto.getAdministrators() != null) {
+            entity.setAdministrators(projectDto.getAdministrators());
+        }
         entity.setRoleIds(defaultList(projectDto.getRoleIds()));
         entity.setEnabledModuleCodes(defaultList(projectDto.getEnabledModuleCodes()));
         entity.setJsonVisit(normalizeOptional(projectDto.getJsonVisit()));
+        entity.setJsonSurvey(normalizeOptional(projectDto.getJsonSurvey()));
         ProjectEntity savedProject = projectRepository.save(entity);
-        projectAdministratorAssignmentService.synchronizeProjectAdministrators(savedProject);
+        if (projectDto.getAdministrators() != null) {
+            projectAdministratorAssignmentService.synchronizeProjectAdministrators(savedProject);
+        }
         log.info("Project centralizzato aggiornato: id={}, code={}, tenantId={}",
                 savedProject.getId(), savedProject.getCode(), tenant.getId());
         return projectMapper.toDto(savedProject);

@@ -27,6 +27,7 @@ public class ProjectMapper {
         dto.setRoleIds(entity.getRoleIds());
         dto.setEnabledModuleCodes(entity.getEnabledModuleCodes());
         dto.setJsonVisit(entity.getJsonVisit());
+        dto.setJsonSurvey(entity.getJsonSurvey());
         // Log di mapping DTO
         org.slf4j.LoggerFactory.getLogger(ProjectMapper.class).debug("[ProjectMapper] toDto: entity={}, dto={}", entity, dto);
         return dto;
@@ -47,6 +48,7 @@ public class ProjectMapper {
         entity.setRoleIds(dto.getRoleIds());
         entity.setEnabledModuleCodes(dto.getEnabledModuleCodes());
         entity.setJsonVisit(dto.getJsonVisit());
+        entity.setJsonSurvey(dto.getJsonSurvey());
         org.slf4j.LoggerFactory.getLogger(ProjectMapper.class).debug("[ProjectMapper] toEntity: dto={}, entity={}", dto, entity);
         return entity;
     }

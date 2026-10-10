@@ -7,6 +7,7 @@ import { ChangePasswordComponent } from './shared/change-password/change-passwor
 import { PatientsCrudComponent } from './features/patients/patients-crud.component';
 import { MedicinesSearchComponent } from './features/medicines-search/medicines-search.component';
 import { MedicinesCrudComponent } from './features/medicines/medicines-crud.component';
+import { MedicineAssociationsComponent } from './features/medicines/medicine-associations.component';
 import { ProjectsSearchComponent } from './features/projects/projects-search.component';
 import { ProjectsCrudComponent } from './features/projects/projects-crud.component';
 import { AslManagementComponent } from './features/asl/asl-management.component';
@@ -35,6 +36,7 @@ export const appRoutes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'medicines/search', component: MedicinesSearchComponent, canActivate: [authGuard] },
+      { path: 'medicines/associations', component: MedicineAssociationsComponent, canActivate: [authGuard] },
       { path: 'projects/search', component: ProjectsSearchComponent, canActivate: [authGuard] },
       { path: 'projects/new', component: ProjectsCrudComponent, canActivate: [authGuard] },
       { path: 'projects/:id', component: ProjectsCrudComponent, canActivate: [authGuard] },

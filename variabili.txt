@@ -52,3 +52,43 @@ APP_KEYCLOAK_LOCAL_REALM_CODE=QTM
 # Variabili runtime frontend QTMDashboard
 NG_APP_API_BASE_URL=/api
 NG_APP_TICKET_API_BASE_URL=/api/ticket
+
+# Variabili Keycloak e integrazioni non locali
+APP_KEYCLOAK_GRANT_TYPE=password
+APP_KEYCLOAK_ADMIN_GRANT_TYPE=client_credentials
+APP_KEYCLOAK_CLIENT_ASSOCIATION_ATTRIBUTE=qtm-client-id
+KEYCLOAK_ADMIN=
+KEYCLOAK_ADMIN_PASSWORD=
+KC_BOOTSTRAP_ADMIN_USERNAME=
+KC_BOOTSTRAP_ADMIN_PASSWORD=
+QTM_HEALTH_STRUCTURE_SERVICE_URL=http://localhost:8089/api/health-structure
+QTM_GEOGRAPHY_SERVICE_URL=http://localhost:8088/api/geography
+SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://auth.example.com/realms/CHANGE_ME
+SPRING_PROFILES_ACTIVE=collaudo
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=
+SPRING_MAIL_PASSWORD=
+PORT_CLIENT_A=80
+
+# Variabili deployment remoto backend QTMDashboard
+JAVA_RUNTIME_IMAGE=eclipse-temurin:17-jre-alpine
+SERVICE_NAME=qtm-dashboard
+SERVICE_CONTAINER_NAME=qtm-dashboard
+SERVICE_NETWORK_ALIAS=qtm-dashboard-backend
+SERVICE_JAR=qtm-dashboard.jar
+SERVICE_NETWORK=qtm-net
+SERVICE_INTERNAL_PORT=8086
+SERVICE_PATH=/api
+SERVICE_DOMAIN=dashboard.example.com
+SERVICE_ROUTER_PRIORITY=100
+
+# Variabili deployment frontend QTMDashboard
+FRONTEND_IMAGE=nginx:1.30-alpine
+FRONTEND_CONTAINER_NAME=qtm-frontend-example
+FRONTEND_NETWORK=qtm-net
+FRONTEND_DOMAIN=app.qtmdev.quicare.com
+FRONTEND_PATH_PREFIX=/keycloak-test
+FRONTEND_TRAEFIK_RULE=Host(`app.qtmdev.quicare.com`) && PathPrefix(`/keycloak-test`)
+FRONTEND_APP_PATH=./app
+FRONTEND_CONF=./nginx.conf

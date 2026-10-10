@@ -2,6 +2,7 @@ package com.qtm.dashboard.structuredepartment.service;
 
 import com.qtm.commonlib.dto.RegionDto;
 import com.qtm.commonlib.dto.ReferentDto;
+import com.qtm.commonlib.dto.HospitalDto;
 import com.qtm.commonlib.dto.StructureDepartmentFilterOptionDto;
 import com.qtm.commonlib.dto.StructureDepartmentFilterOptionsDto;
 import com.qtm.commonlib.dto.StructureDepartmentOverviewDto;
@@ -35,13 +36,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Servizio che popola i filtri dai sorgenti associati e legge da QTMTicket solo
- * i reparti delle strutture locali.
+ * Servizio che ricerca strutture e reparti nei cataloghi QTMTicket e conserva in QTMDB le associazioni selezionate.
  */
 @Slf4j
 @Service
@@ -154,9 +155,13 @@ public class StructureDepartmentService {
 		List<ASLEntity> asls = aslRepository.findAll();
 		Map<Long, ASLEntity> aslsById = loadAslsById(asls);
 		Map<String, HospitalEntity> hospitalsByStructureCode = loadHospitalsByStructureCode();
-
+		Set<String> associatedAslKeys = hospitalsByStructureCode.values().stream()
+				.map(hospital -> buildAslKey(resolveHospitalRegionCode(hospital, aslsById),
+						resolveHospitalAslCode(hospital, aslsById)))
+				.filter(key -> !key.startsWith("null||") && !key.endsWith("||null"))
+				.collect(Collectors.toSet());
 		return StructureDepartmentFilterOptionsDto.builder().regions(buildRegionOptions(regionsByCode))
-				.asls(buildAslOptions(asls, regionsByCode))
+				.asls(buildAslOptions(asls, regionsByCode, associatedAslKeys))
 				.hospitals(buildHospitalOptions(hospitalsByStructureCode, aslsById)).build();
 	}
 
@@ -184,10 +189,10 @@ public class StructureDepartmentService {
 						Function.identity(), (first, second) -> first));
 		log.info("[StructureDepartmentService] qtmdb local association keys={}", localAssociationsByKey.keySet());
 
-		List<StructureDepartmentSourceDto> ticketDepartments = associatedStructureCodes.stream()
-				.peek(code -> log.info(
-						"[StructureDepartmentService] fetching departments from TICKET for structureCode={}", code))
-				.flatMap(code -> fetchStructureDepartmentsByStructureCode(code).stream()).toList();
+		       Set<String> associatedStructureCodeSet = Set.copyOf(associatedStructureCodes);
+		       List<StructureDepartmentSourceDto> ticketDepartments = fetchAllStructureDepartmentsFromTicket().stream()
+			       .filter(row -> associatedStructureCodeSet.contains(normalizeCode(row.getCodiceStruttura())))
+			       .toList();
 		log.info("[StructureDepartmentService] extracted {} departments from TICKET keys={}", ticketDepartments.size(),
 				ticketDepartments.stream()
 						.map(row -> buildAssociationKey(row.getCodiceStruttura(), row.getCodiceDisciplina())).toList());
@@ -282,10 +287,27 @@ public class StructureDepartmentService {
 	}
 
 	private Map<String, HospitalEntity> loadHospitalsByStructureCode() {
-		return hospitalRepository.findAll().stream()
+		Map<String, HospitalEntity> hospitalsByCode = hospitalRepository.findAll().stream()
 				.filter(hospital -> StringUtils.hasText(hospital.getCodiceStruttura()))
 				.collect(Collectors.toMap(hospital -> normalizeCode(hospital.getCodiceStruttura()), Function.identity(),
 						(first, second) -> first));
+		fetchAllHospitalsFromTicket().stream()
+				.filter(hospital -> hospital != null && StringUtils.hasText(hospital.getCodiceStruttura()))
+				.map(this::toHospitalEntity)
+				.forEach(hospital -> hospitalsByCode.putIfAbsent(
+						normalizeCode(hospital.getCodiceStruttura()), hospital));
+		return hospitalsByCode;
+	}
+
+	private HospitalEntity toHospitalEntity(HospitalDto hospital) {
+		return HospitalEntity.builder()
+				.id(hospital.getId())
+				.codiceRegione(hospital.getCodiceRegione())
+				.codiceAsl(hospital.getCodiceAsl())
+				.aslId(hospital.getAslId())
+				.codiceStruttura(hospital.getCodiceStruttura())
+				.struttura(hospital.getStruttura())
+				.build();
 	}
 
 	private List<String> resolveAssociatedStructureCodes(String regionCode, String aslCode, String structureCode,
@@ -332,9 +354,17 @@ public class StructureDepartmentService {
 	}
 
 	private List<StructureDepartmentFilterOptionDto> buildAslOptions(List<ASLEntity> asls,
-			Map<String, RegionDto> regionsByCode) {
-		return asls.stream().filter(asl -> StringUtils.hasText(asl.getCodiceAzienda())).sorted(Comparator
-				.comparing(ASLEntity::getDenominazioneAzienda, Comparator.nullsLast(String::compareToIgnoreCase)))
+			Map<String, RegionDto> regionsByCode, Set<String> associatedAslKeys) {
+		Comparator<ASLEntity> aslNameComparator = Comparator
+				.comparing(ASLEntity::getDenominazioneAzienda, Comparator.nullsLast(String::compareToIgnoreCase))
+				.thenComparing(ASLEntity::getId, Comparator.nullsLast(Long::compareTo));
+		Map<String, ASLEntity> uniqueAssociatedAsls = asls.stream()
+				.filter(asl -> StringUtils.hasText(asl.getCodiceRegione()) && StringUtils.hasText(asl.getCodiceAzienda()))
+				.filter(asl -> associatedAslKeys.contains(buildAslKey(asl.getCodiceRegione(), asl.getCodiceAzienda())))
+				.sorted(aslNameComparator)
+				.collect(Collectors.toMap(asl -> buildAslKey(asl.getCodiceRegione(), asl.getCodiceAzienda()),
+						Function.identity(), (first, second) -> first));
+		return uniqueAssociatedAsls.values().stream().sorted(aslNameComparator)
 				.map(asl -> {
 					RegionDto region = regionsByCode.get(normalizeCode(asl.getCodiceRegione()));
 					String label = StringUtils.hasText(asl.getDenominazioneAzienda())
@@ -401,6 +431,32 @@ public class StructureDepartmentService {
 			return sourceRegions == null ? new ArrayList<>() : Arrays.asList(sourceRegions);
 		} catch (Exception exception) {
 			log.error("[StructureDepartmentService] errore fetchAllRegionsFromTicket", exception);
+			throw mapExternalException(exception, targetUrl);
+		}
+	}
+
+	private List<HospitalDto> fetchAllHospitalsFromTicket() {
+		String targetUrl = buildTicketApiUrl("hospitals");
+		log.info("[StructureDepartmentService] chiamata QTMTicket per {}", targetUrl);
+		try {
+			HospitalDto[] sourceHospitals = apiRootRestClient.get().uri("hospitals").retrieve()
+					.body(HospitalDto[].class);
+			return sourceHospitals == null ? List.of() : Arrays.asList(sourceHospitals);
+		} catch (Exception exception) {
+			log.error("[StructureDepartmentService] errore fetchAllHospitalsFromTicket", exception);
+			throw mapExternalException(exception, targetUrl);
+		}
+	}
+
+	private List<StructureDepartmentSourceDto> fetchAllStructureDepartmentsFromTicket() {
+		String targetUrl = buildTicketApiUrl("structure-departments");
+		log.info("[StructureDepartmentService] chiamata QTMTicket per {}", targetUrl);
+		try {
+			StructureDepartmentSourceDto[] sourceDepartments = restClient.get().uri("structure-departments")
+					.retrieve().body(StructureDepartmentSourceDto[].class);
+			return sourceDepartments == null ? List.of() : Arrays.asList(sourceDepartments);
+		} catch (Exception exception) {
+			log.error("[StructureDepartmentService] errore fetchAllStructureDepartmentsFromTicket", exception);
 			throw mapExternalException(exception, targetUrl);
 		}
 	}

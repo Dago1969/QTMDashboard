@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
+import { QtmButtonComponent } from 'qtm-shared';
 import { I18nPropertiesService } from '../core/i18n-properties.service';
 
 const AUTO_DISMISS_DELAY_MS = 4000;
@@ -42,7 +43,7 @@ export interface SearchFilterChangeEvent {
 @Component({
   selector: 'app-search-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, QtmButtonComponent],
   template: `
     <section class="search-page modern-search">
       <div class="search-header dashboard-header">
@@ -52,11 +53,23 @@ export interface SearchFilterChangeEvent {
         </div>
 
         <div class="search-header-actions">
-          <button class="btn btn-outline" type="button" (click)="showFilters = !showFilters">
+          <qtm-button
+            *ngIf="useSharedButtons"
+            variant="outline"
+            [label]="translate('search.filters.toggle')"
+            (btnClick)="showFilters = !showFilters"
+          ></qtm-button>
+          <button *ngIf="!useSharedButtons" class="btn btn-outline" type="button" (click)="showFilters = !showFilters">
             {{ translate('search.filters.toggle') }}
           </button>
 
-          <button *ngIf="showCreateAction" class="btn btn-primary" type="button" (click)="createAction.emit()">
+          <qtm-button
+            *ngIf="showCreateAction && useSharedButtons"
+            variant="primary"
+            [label]="translate(createActionLabelKey)"
+            (btnClick)="createAction.emit()"
+          ></qtm-button>
+          <button *ngIf="showCreateAction && !useSharedButtons" class="btn btn-primary" type="button" (click)="createAction.emit()">
             {{ translate(createActionLabelKey) }}
           </button>
         </div>
@@ -99,8 +112,10 @@ export interface SearchFilterChangeEvent {
           </label>
 
           <div *ngIf="!hideFilterActions" class="search-filters-actions-inline">
-            <button type="submit" class="btn btn-primary">{{ translate('crud.actions.search') }}</button>
-            <button type="button" class="btn btn-outline" (click)="resetFilters()">{{ translate('crud.actions.reset') }}</button>
+            <qtm-button *ngIf="useSharedButtons" type="submit" variant="primary" [label]="translate('crud.actions.search')"></qtm-button>
+            <qtm-button *ngIf="useSharedButtons" variant="outline" [label]="translate('crud.actions.reset')" (btnClick)="resetFilters()"></qtm-button>
+            <button *ngIf="!useSharedButtons" type="submit" class="btn btn-primary">{{ translate('crud.actions.search') }}</button>
+            <button *ngIf="!useSharedButtons" type="button" class="btn btn-outline" (click)="resetFilters()">{{ translate('crud.actions.reset') }}</button>
           </div>
         </form>
       </div>
@@ -218,6 +233,7 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
   @Input() filtersClass = '';
   @Input() hideFilterActions = false;
   @Input() hideRowId = false;
+  @Input() useSharedButtons = false;
 
   @Output() readonly createAction = new EventEmitter<void>();
   @Output() readonly viewAction = new EventEmitter<SearchPageActionEvent<T>>();

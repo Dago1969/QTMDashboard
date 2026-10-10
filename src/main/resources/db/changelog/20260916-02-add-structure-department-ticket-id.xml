@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="20260916-02-add-structure-department-ticket-id" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <tableExists tableName="structure_department"/>
+            <not>
+                <columnExists tableName="structure_department" columnName="ticket_structure_department_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="structure_department">
+            <column name="ticket_structure_department_id" type="BIGINT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="structure_department" columnName="ticket_structure_department_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
