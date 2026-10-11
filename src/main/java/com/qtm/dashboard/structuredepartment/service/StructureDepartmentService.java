@@ -196,7 +196,8 @@ public class StructureDepartmentService {
 
 		       Set<String> associatedStructureCodeSet = Set.copyOf(associatedStructureCodes);
 		       List<StructureDepartmentSourceDto> ticketDepartments = fetchAllStructureDepartmentsFromTicket().stream()
-			       .filter(row -> associatedStructureCodeSet.contains(normalizeCode(row.getCodiceStruttura())))
+					.filter(row -> row != null && StringUtils.hasText(row.getCodiceStruttura()))
+					.filter(row -> associatedStructureCodeSet.contains(normalizeCode(row.getCodiceStruttura())))
 			       .toList();
 		log.info("[StructureDepartmentService] extracted {} departments from TICKET keys={}", ticketDepartments.size(),
 				ticketDepartments.stream()

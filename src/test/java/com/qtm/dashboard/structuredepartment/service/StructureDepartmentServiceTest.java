@@ -61,7 +61,7 @@ class StructureDepartmentServiceTest {
     private RestClient.ResponseSpec responseSpec;
 
     @Test
-    void findAllWithImportStatusShouldExposeHospitalFieldsAndImportedFlag() {
+        void findAllWithImportStatusShouldSkipRowsWithoutStructureCode() {
         StructureDepartmentService service = new StructureDepartmentService(
                 aslRepository,
                 hospitalRepository,
@@ -96,7 +96,10 @@ class StructureDepartmentServiceTest {
                 .codiceStruttura("H001")
                 .struttura("Ospedale TICKET")
                 .build());
-        stubTicketDepartmentCatalog(sourceDepartment);
+        stubTicketDepartmentCatalog(sourceDepartment, StructureDepartmentSourceDto.builder()
+                .id(12L)
+                .codiceDisciplina("INCOMPLETE")
+                .build());
 
         when(aslRepository.findAll()).thenReturn(List.of(ASLEntity.builder()
                 .id(10L)
