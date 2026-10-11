@@ -21,8 +21,8 @@
       "dom"
     ],
     "paths": {
-      "qtm-shared": [
-        "../../QTMAngularShared/dist/qtm-shared"
+      "@angular/*": [
+        "./node_modules/@angular/*"
       ]
     }
   },

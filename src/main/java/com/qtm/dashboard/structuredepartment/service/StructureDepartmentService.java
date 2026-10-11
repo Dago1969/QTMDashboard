@@ -14,6 +14,7 @@ import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.repository.ASLRepository;
 import com.qtm.dashboard.hospital.entity.HospitalEntity;
 import com.qtm.dashboard.hospital.repository.HospitalRepository;
+import com.qtm.dashboard.geography.TicketGeographyService;
 import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentImportRequest;
 import com.qtm.dashboard.structuredepartment.entity.StructureDepartmentEntity;
 import com.qtm.dashboard.structuredepartment.repository.StructureDepartmentRepository;
@@ -54,6 +55,7 @@ public class StructureDepartmentService {
 	private final ASLRepository aslRepository;
 	private final HospitalRepository hospitalRepository;
 	private final StructureDepartmentRepository structureDepartmentRepository;
+	private final TicketGeographyService ticketGeographyService;
 	private final RestClient restClient;
 	private final RestClient apiRootRestClient;
 	private final String ticketApiRootUrl;
@@ -61,18 +63,21 @@ public class StructureDepartmentService {
 	@Autowired
 	public StructureDepartmentService(ASLRepository aslRepository, HospitalRepository hospitalRepository,
 			StructureDepartmentRepository structureDepartmentRepository,
+			TicketGeographyService ticketGeographyService,
 			@Value("${qtm.ticket.base-url:http://localhost:8084/api/ticket}") String ticketBaseUrl) {
-		this(aslRepository, hospitalRepository, structureDepartmentRepository,
+		this(aslRepository, hospitalRepository, structureDepartmentRepository, ticketGeographyService,
 				RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build(),
 				RestClient.builder().baseUrl(deriveTicketApiRootUrl(ticketBaseUrl)).build(), ticketBaseUrl);
 	}
 
 	StructureDepartmentService(ASLRepository aslRepository, HospitalRepository hospitalRepository,
-			StructureDepartmentRepository structureDepartmentRepository, RestClient restClient,
+			StructureDepartmentRepository structureDepartmentRepository, TicketGeographyService ticketGeographyService,
+			RestClient restClient,
 			RestClient apiRootRestClient, String ticketBaseUrl) {
 		this.aslRepository = aslRepository;
 		this.hospitalRepository = hospitalRepository;
 		this.structureDepartmentRepository = structureDepartmentRepository;
+		this.ticketGeographyService = ticketGeographyService;
 		this.restClient = restClient;
 		this.apiRootRestClient = apiRootRestClient;
 		this.ticketApiRootUrl = deriveTicketApiRootUrl(ticketBaseUrl);
@@ -281,7 +286,7 @@ public class StructureDepartmentService {
 	}
 
 	private Map<String, RegionDto> loadRegionsByCode() {
-		return fetchAllRegionsFromTicket().stream().filter(region -> StringUtils.hasText(region.getCode()))
+		return fetchAllRegionsFromGeography().stream().filter(region -> StringUtils.hasText(region.getCode()))
 				.collect(Collectors.toMap(region -> normalizeCode(region.getCode()), Function.identity(),
 						(first, second) -> first));
 	}
@@ -423,16 +428,9 @@ public class StructureDepartmentService {
 		return aslsById.get(hospital.getAslId());
 	}
 
-	private List<RegionDto> fetchAllRegionsFromTicket() {
-		String targetUrl = buildTicketApiUrl("regions");
-		log.info("[StructureDepartmentService] chiamata QTMTicket per {}", targetUrl);
-		try {
-			RegionDto[] sourceRegions = apiRootRestClient.get().uri("regions").retrieve().body(RegionDto[].class);
-			return sourceRegions == null ? new ArrayList<>() : Arrays.asList(sourceRegions);
-		} catch (Exception exception) {
-			log.error("[StructureDepartmentService] errore fetchAllRegionsFromTicket", exception);
-			throw mapExternalException(exception, targetUrl);
-		}
+	private List<RegionDto> fetchAllRegionsFromGeography() {
+		log.info("[StructureDepartmentService] chiamata servizio geografia per le regioni");
+		return ticketGeographyService.findRegions();
 	}
 
 	private List<HospitalDto> fetchAllHospitalsFromTicket() {

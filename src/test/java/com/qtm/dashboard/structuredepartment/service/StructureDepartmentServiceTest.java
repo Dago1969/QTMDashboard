@@ -6,6 +6,7 @@ import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.repository.ASLRepository;
 import com.qtm.dashboard.hospital.entity.HospitalEntity;
 import com.qtm.dashboard.hospital.repository.HospitalRepository;
+import com.qtm.dashboard.geography.TicketGeographyService;
 import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentImportRequest;
 import com.qtm.commonlib.dto.StructureDepartmentSourceDto;
 import com.qtm.dashboard.structuredepartment.entity.StructureDepartmentEntity;
@@ -41,6 +42,9 @@ class StructureDepartmentServiceTest {
     @Mock
     private StructureDepartmentRepository structureDepartmentRepository;
 
+        @Mock
+        private TicketGeographyService ticketGeographyService;
+
     @Mock
     private RestClient restClient;
 
@@ -62,6 +66,7 @@ class StructureDepartmentServiceTest {
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
@@ -81,12 +86,9 @@ class StructureDepartmentServiceTest {
                 .referentsJson("[]")
                 .build();
 
-        lenient().doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("13").name("Abruzzo").build()
-        });
+        ));
         stubTicketHospitalCatalog(HospitalDto.builder()
                 .id(100L)
                 .codiceRegione("13")
@@ -129,6 +131,7 @@ class StructureDepartmentServiceTest {
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
@@ -142,12 +145,9 @@ class StructureDepartmentServiceTest {
                 .indirizzo("Via Ticket 2")
                 .build();
 
-        lenient().doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("13").name("Abruzzo").build()
-        });
+        ));
         stubTicketHospitalCatalog(HospitalDto.builder()
                 .id(101L)
                 .codiceRegione("13")
@@ -186,6 +186,7 @@ class StructureDepartmentServiceTest {
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
@@ -197,12 +198,9 @@ class StructureDepartmentServiceTest {
                 .codiceDisciplina("CARD")
                 .build();
 
-        lenient().doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("09").name("Toscana").build()
-        });
+        ));
         stubTicketHospitalCatalog(HospitalDto.builder()
                 .id(191L)
                 .codiceRegione("09")
@@ -249,17 +247,15 @@ class StructureDepartmentServiceTest {
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
         );
 
-        lenient().doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("13").name("Abruzzo").build()
-        });
+        ));
         stubTicketHospitalCatalog(HospitalDto.builder()
                 .id(102L)
                 .codiceRegione("13")
@@ -295,6 +291,8 @@ class StructureDepartmentServiceTest {
         assertThat(filterOptions.getHospitals().get(0).getCode()).isEqualTo("H003");
         assertThat(filterOptions.getHospitals().get(0).getAslCode()).isEqualTo("203");
         assertThat(filterOptions.getHospitals().get(0).getLabel()).isEqualTo("Ospedale Dal TICKET (H003)");
+        verify(ticketGeographyService).findRegions();
+        verify(apiRootRequestHeadersUriSpec, never()).uri("regions");
         verify(restClient, never()).get();
         verify(structureDepartmentRepository, never()).save(any());
     }
@@ -305,6 +303,7 @@ class StructureDepartmentServiceTest {
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
