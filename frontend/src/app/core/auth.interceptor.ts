@@ -6,6 +6,10 @@ import { AuthService } from './auth.service';
  * Interceptor che aggiunge header Authorization Bearer alle richieste HTTP.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  if (/\/auth\/login(?:[?#]|$)/.test(req.url)) {
+    return next(req);
+  }
+
   const authService = inject(AuthService);
   const token = authService.getToken();
 
