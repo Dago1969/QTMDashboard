@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${DB_HOST:qtmdev.quicare.com}:${DB_PORT:3306}/${DB_NAME:qtmdashboard_${APP_KEYCLOAK_REALM_CODE:realmCode}}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://${DB_HOST:qtmdev.quicare.com}:${DB_PORT:3306}/${DB_NAME_PREFIX:}${DB_NAME:qtmdashboard_${APP_KEYCLOAK_REALM_CODE:realmCode}}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:dago}
     driver-class-name: com.mysql.cj.jdbc.Driver
