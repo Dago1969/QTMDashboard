@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="20260909-01-add-caregiver-relationship" author="copilot">
+        <validCheckSum>ANY</validCheckSum>
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <and>
+                <tableExists tableName="patients"/>
+                <not>
+                    <columnExists tableName="patients" columnName="caregiver_relationship"/>
+                </not>
+                <not>
+                    <columnExists tableName="patients" columnName="otp_recipient"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="patients">
+            <column name="caregiver_relationship" type="VARCHAR(64)" defaultValue=""/>
+            <column name="otp_recipient" type="VARCHAR(64)" defaultValue="primaryPhone"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="patients" columnName="caregiver_relationship"/>
+            <dropColumn tableName="patients" columnName="otp_recipient"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20261008-03-ensure-caregiver-relationship-column" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <tableExists tableName="patients"/>
+            <not>
+                <columnExists tableName="patients" columnName="caregiver_relationship"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="patients">
+            <column name="caregiver_relationship" type="VARCHAR(64)" defaultValue=""/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="20261008-04-ensure-otp-recipient-column" author="copilot">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <tableExists tableName="patients"/>
+            <not>
+                <columnExists tableName="patients" columnName="otp_recipient"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="patients">
+            <column name="otp_recipient" type="VARCHAR(64)" defaultValue="primaryPhone"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

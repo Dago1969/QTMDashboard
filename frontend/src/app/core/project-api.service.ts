@@ -16,7 +16,16 @@ export interface ProjectDto {
   emailSender?: string;
   dataInizio?: string;
   dataFine?: string;
+  administrators?: ProjectAdministratorDto[];
   jsonVisit?: string;
+  jsonSurvey?: string;
+}
+
+export interface ProjectAdministratorDto {
+  userId: number;
+  roleId: string;
+  username?: string;
+  email?: string;
 }
 
 export interface ProjectSearchFilters {

@@ -36,10 +36,10 @@ spring:
           issuer-uri: ${app.keycloak.realm-url}
           jwk-set-uri: ${APP_KEYCLOAK_JWK_SET_URI:${app.keycloak.realm-url}/protocol/openid-connect/certs}
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: francesco.tripodi@gmail.com
-    password: ayekcfnurmmpwrxd
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
     protocol: smtp
     properties:
       mail:
@@ -51,7 +51,7 @@ spring:
           starttls:
             enable: true
           ssl:
-            trust: smtp.gmail.com
+            trust: ${SPRING_MAIL_HOST:smtp.gmail.com}
 
 
 app:
@@ -95,6 +95,14 @@ app:
   ticket:
     # FIXME Francesco: URL interno configurabile per il deploy Docker; il default mantiene l'avvio locale corrente.
     base-url: ${APP_TICKET_BASE_URL:http://localhost:8084/api/ticket}
+
+services:
+  ticket-service:
+    url: ${TICKET_SERVICE_URL:${app.ticket.base-url:http://localhost:8084/api/ticket}}
+  qtm-geography-service:
+    url: ${QTM_GEOGRAPHY_SERVICE_URL:http://localhost:8088/api/geography}
+  qtm-health-structure-service:
+    url: ${QTM_HEALTH_STRUCTURE_SERVICE_URL:http://localhost:8089/api/health-structure}
 
 # Proprieta custom per OTP Twilio Verify
 qtm:

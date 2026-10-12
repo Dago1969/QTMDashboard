@@ -1,12 +1,14 @@
 package com.qtm.dashboard.structuredepartment.service;
 
 import com.qtm.commonlib.dto.RegionDto;
+import com.qtm.commonlib.dto.HospitalDto;
 import com.qtm.dashboard.asl.entity.ASLEntity;
 import com.qtm.dashboard.asl.repository.ASLRepository;
 import com.qtm.dashboard.hospital.entity.HospitalEntity;
 import com.qtm.dashboard.hospital.repository.HospitalRepository;
+import com.qtm.dashboard.geography.TicketGeographyService;
 import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentImportRequest;
-import com.qtm.dashboard.structuredepartment.dto.StructureDepartmentSourceDto;
+import com.qtm.commonlib.dto.StructureDepartmentSourceDto;
 import com.qtm.dashboard.structuredepartment.entity.StructureDepartmentEntity;
 import com.qtm.dashboard.structuredepartment.repository.StructureDepartmentRepository;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +41,9 @@ class StructureDepartmentServiceTest {
 
     @Mock
     private StructureDepartmentRepository structureDepartmentRepository;
+
+        @Mock
+        private TicketGeographyService ticketGeographyService;
 
     @Mock
     private RestClient restClient;
@@ -55,11 +61,12 @@ class StructureDepartmentServiceTest {
     private RestClient.ResponseSpec responseSpec;
 
     @Test
-    void findAllWithImportStatusShouldExposeHospitalFieldsAndImportedFlag() {
+        void findAllWithImportStatusShouldSkipRowsWithoutStructureCode() {
         StructureDepartmentService service = new StructureDepartmentService(
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
@@ -79,16 +86,20 @@ class StructureDepartmentServiceTest {
                 .referentsJson("[]")
                 .build();
 
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("13").name("Abruzzo").build()
-        });
-        doReturn(requestHeadersUriSpec).when(restClient).get();
-        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("structure-departments?codiceStruttura={codiceStruttura}", "H001");
-        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(StructureDepartmentSourceDto[].class)).thenReturn(new StructureDepartmentSourceDto[]{sourceDepartment});
+        ));
+        stubTicketHospitalCatalog(HospitalDto.builder()
+                .id(100L)
+                .codiceRegione("13")
+                .codiceAsl("201")
+                .codiceStruttura("H001")
+                .struttura("Ospedale TICKET")
+                .build());
+        stubTicketDepartmentCatalog(sourceDepartment, StructureDepartmentSourceDto.builder()
+                .id(12L)
+                .codiceDisciplina("INCOMPLETE")
+                .build());
 
         when(aslRepository.findAll()).thenReturn(List.of(ASLEntity.builder()
                 .id(10L)
@@ -117,12 +128,13 @@ class StructureDepartmentServiceTest {
         verify(structureDepartmentRepository).findAll();
     }
 
-    @Test
-    void findAllWithImportStatusShouldUseHospitalTableEvenWhenStructureTableIsEmpty() {
+        @Test
+        void findAllWithImportStatusShouldUseTicketCatalogWhenLocalHospitalTableIsEmpty() {
         StructureDepartmentService service = new StructureDepartmentService(
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
@@ -136,16 +148,17 @@ class StructureDepartmentServiceTest {
                 .indirizzo("Via Ticket 2")
                 .build();
 
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("13").name("Abruzzo").build()
-        });
-        doReturn(requestHeadersUriSpec).when(restClient).get();
-        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("structure-departments?codiceStruttura={codiceStruttura}", "H002");
-        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(StructureDepartmentSourceDto[].class)).thenReturn(new StructureDepartmentSourceDto[]{sourceDepartment});
+        ));
+        stubTicketHospitalCatalog(HospitalDto.builder()
+                .id(101L)
+                .codiceRegione("13")
+                .codiceAsl("202")
+                .codiceStruttura("H002")
+                .struttura("Ospedale Solo TICKET")
+                .build());
+        stubTicketDepartmentCatalog(sourceDepartment);
 
         when(aslRepository.findAll()).thenReturn(List.of(ASLEntity.builder()
                 .id(11L)
@@ -153,23 +166,18 @@ class StructureDepartmentServiceTest {
                 .denominazioneAzienda("ASL Chieti")
                 .codiceRegione("13")
                 .build()));
-        when(hospitalRepository.findAll()).thenReturn(List.of(HospitalEntity.builder()
-                .id(101L)
-                .codiceRegione("13")
-                .codiceAsl("202")
-                .codiceStruttura("H002")
-                .struttura("Ospedale Solo Hospital")
-                .build()));
+        when(hospitalRepository.findAll()).thenReturn(List.of());
         when(structureDepartmentRepository.findAll()).thenReturn(List.of());
 
         var overview = service.findAllWithImportStatus("13", "202", "");
 
         assertThat(overview).hasSize(1);
         assertThat(overview.get(0).getCodiceStruttura()).isEqualTo("H002");
-        assertThat(overview.get(0).getStruttura()).isEqualTo("Ospedale Solo Hospital");
+        assertThat(overview.get(0).getStruttura()).isEqualTo("Ospedale Solo TICKET");
         assertThat(overview.get(0).getDisciplina()).isEqualTo("Neurologia");
         assertThat(overview.get(0).getImported()).isFalse();
         verify(restClient).get();
+        verify(structureDepartmentRepository, never()).save(any());
     }
 
     /**
@@ -181,6 +189,7 @@ class StructureDepartmentServiceTest {
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
@@ -192,16 +201,17 @@ class StructureDepartmentServiceTest {
                 .codiceDisciplina("CARD")
                 .build();
 
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("09").name("Toscana").build()
-        });
-        doReturn(requestHeadersUriSpec).when(restClient).get();
-        doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("structure-departments?codiceStruttura={codiceStruttura}", "090623");
-        when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(StructureDepartmentSourceDto[].class)).thenReturn(new StructureDepartmentSourceDto[]{sourceDepartment});
+        ));
+        stubTicketHospitalCatalog(HospitalDto.builder()
+                .id(191L)
+                .codiceRegione("09")
+                .codiceAsl("203")
+                .codiceStruttura("090623")
+                .struttura("OSPEDALE S.ANDREA MASSA MARITTIMA")
+                .build());
+        stubTicketDepartmentCatalog(sourceDepartment);
 
         when(aslRepository.findAll()).thenReturn(List.of(
                 ASLEntity.builder()
@@ -234,45 +244,60 @@ class StructureDepartmentServiceTest {
         assertThat(overview.get(0).getAsl()).isEqualTo("AZIENDA USL TOSCANA SUD-EST");
     }
 
-    @Test
-    void getFilterOptionsShouldExposeHospitalsFromHospitalTable() {
+        @Test
+        void getFilterOptionsShouldExposeHospitalsFromTicketWhenLocalHospitalTableIsEmpty() {
         StructureDepartmentService service = new StructureDepartmentService(
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
         );
 
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
-        doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("regions");
-        when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(RegionDto[].class)).thenReturn(new RegionDto[]{
+        when(ticketGeographyService.findRegions()).thenReturn(List.of(
                 RegionDto.builder().code("13").name("Abruzzo").build()
-        });
+        ));
+        stubTicketHospitalCatalog(HospitalDto.builder()
+                .id(102L)
+                .codiceRegione("13")
+                .codiceAsl("203")
+                .codiceStruttura("H003")
+                .struttura("Ospedale Dal TICKET")
+                .build());
 
         when(aslRepository.findAll()).thenReturn(List.of(ASLEntity.builder()
                 .id(12L)
                 .codiceAzienda("203")
                 .denominazioneAzienda("ASL Pescara")
                 .codiceRegione("13")
-                .build()));
-        when(hospitalRepository.findAll()).thenReturn(List.of(HospitalEntity.builder()
-                .id(102L)
+                .build(), ASLEntity.builder()
+                .id(13L)
+                .codiceAzienda("203")
+                .denominazioneAzienda("ASL Pescara")
                 .codiceRegione("13")
-                .codiceAsl("203")
-                .codiceStruttura("H003")
-                .struttura("Ospedale Dal DB Hospital")
+                .build(), ASLEntity.builder()
+                .id(14L)
+                .codiceAzienda("204")
+                .denominazioneAzienda("ASL non associata")
+                .codiceRegione("13")
                 .build()));
+        when(hospitalRepository.findAll()).thenReturn(List.of());
 
         var filterOptions = service.getFilterOptions();
 
+        assertThat(filterOptions.getAsls()).hasSize(1);
+        assertThat(filterOptions.getAsls().get(0).getCode()).isEqualTo("203");
+        assertThat(filterOptions.getAsls().get(0).getLabel()).isEqualTo("ASL Pescara (203) - Abruzzo");
         assertThat(filterOptions.getHospitals()).hasSize(1);
         assertThat(filterOptions.getHospitals().get(0).getCode()).isEqualTo("H003");
         assertThat(filterOptions.getHospitals().get(0).getAslCode()).isEqualTo("203");
-        assertThat(filterOptions.getHospitals().get(0).getLabel()).isEqualTo("Ospedale Dal DB Hospital (H003)");
+        assertThat(filterOptions.getHospitals().get(0).getLabel()).isEqualTo("Ospedale Dal TICKET (H003)");
+        verify(ticketGeographyService).findRegions();
+        verify(apiRootRequestHeadersUriSpec, never()).uri("regions");
         verify(restClient, never()).get();
+        verify(structureDepartmentRepository, never()).save(any());
     }
 
     @Test
@@ -281,6 +306,7 @@ class StructureDepartmentServiceTest {
                 aslRepository,
                 hospitalRepository,
                 structureDepartmentRepository,
+                ticketGeographyService,
                 restClient,
                 apiRootRestClient,
                 "http://ticket.test"
@@ -312,4 +338,18 @@ class StructureDepartmentServiceTest {
                         && Objects.equals(entity.getReferentsJson(), "[]")
         ));
     }
+
+        private void stubTicketHospitalCatalog(HospitalDto... hospitals) {
+                lenient().doReturn(apiRootRequestHeadersUriSpec).when(apiRootRestClient).get();
+                doReturn(apiRootRequestHeadersUriSpec).when(apiRootRequestHeadersUriSpec).uri("hospitals");
+                when(apiRootRequestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+                lenient().when(responseSpec.body(HospitalDto[].class)).thenReturn(hospitals);
+        }
+
+        private void stubTicketDepartmentCatalog(StructureDepartmentSourceDto... departments) {
+                doReturn(requestHeadersUriSpec).when(restClient).get();
+                doReturn(requestHeadersUriSpec).when(requestHeadersUriSpec).uri("structure-departments");
+                when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+                when(responseSpec.body(StructureDepartmentSourceDto[].class)).thenReturn(departments);
+        }
 }

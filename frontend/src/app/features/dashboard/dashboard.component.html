@@ -30,6 +30,9 @@
           <a routerLink="/dashboard/medicines/search" routerLinkActive="active" class="dashboard-nav-group-link">
             {{ t('dashboard.menu.medicines') }}
           </a>
+          <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/medicines/associations" routerLinkActive="active" class="dashboard-nav-group-link">
+            {{ t('medicines.associations.menu') }}
+          </a>
           <a *ngIf="isSuperAdminOrAdminQtm()" routerLink="/dashboard/projects/search" routerLinkActive="active" class="dashboard-nav-group-link">
             {{ t('dashboard.menu.projects') }}
           </a>

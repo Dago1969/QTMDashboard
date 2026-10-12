@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20261010-02-add-patient-otp-recipient
+      author: copilot
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: patients
+          - not:
+              columnExists:
+                tableName: patients
+                columnName: otp_recipient
+      changes:
+        - addColumn:
+            tableName: patients
+            columns:
+              - column:
+                  name: otp_recipient
+                  type: VARCHAR(32)
+      rollback:
+        - dropColumn:
+            tableName: patients
+            columnName: otp_recipient

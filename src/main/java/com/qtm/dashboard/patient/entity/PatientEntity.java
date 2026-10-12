@@ -61,6 +61,9 @@ public class PatientEntity {
     @Column(name = "secondary_phone")
     private String secondaryPhone;
 
+    @Column(name = "otp_recipient", length = 32)
+    private String otpRecipient;
+
     @Column(name = "region_id")
     private Long regionId;
 

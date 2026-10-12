@@ -85,6 +85,10 @@ public class ProjectEntity {
     @Column(name = "json_visit", columnDefinition = "TEXT")
     private String jsonVisit;
 
+    @Lob
+    @Column(name = "json_survey", columnDefinition = "TEXT")
+    private String jsonSurvey;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tenant_id", nullable = false)
     private TenantAppPointerEntity tenant;

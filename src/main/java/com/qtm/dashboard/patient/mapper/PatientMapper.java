@@ -18,6 +18,7 @@ public class PatientMapper {
         entity.setEmail(dto.getEmail());
         entity.setPrimaryPhone(dto.getPrimaryPhone());
         entity.setSecondaryPhone(dto.getSecondaryPhone());
+        entity.setOtpRecipient(dto.getOtpRecipient());
         entity.setRegionId(dto.getRegionId());
         entity.setRegion(dto.getRegion());
         entity.setProvinceId(dto.getProvinceId());
@@ -59,6 +60,7 @@ public class PatientMapper {
         dto.setEmail(entity.getEmail());
         dto.setPrimaryPhone(entity.getPrimaryPhone());
         dto.setSecondaryPhone(entity.getSecondaryPhone());
+        dto.setOtpRecipient(entity.getOtpRecipient());
         dto.setRegionId(entity.getRegionId());
         dto.setRegion(entity.getRegion());
         dto.setProvinceId(entity.getProvinceId());

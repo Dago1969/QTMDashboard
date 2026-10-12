@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ViewChild } from '@angular/core';
 import { Observable } from 'rxjs';
-import { MedicineApiService, MedicineDto, MedicineSearchFilters } from '../../core/medicine-api.service';
+import { QtmButtonComponent } from 'qtm-shared';
+import { I18nPropertiesService } from '../../core/i18n-properties.service';
+import { MedicineApiService, MedicineDto, MedicineImportResult, MedicineSearchFilters } from '../../core/medicine-api.service';
 import {
   SearchFilterField,
   SearchPageActionEvent,
@@ -16,8 +19,26 @@ import { MedicinesWizardComponent } from '../medicines/medicines-wizard.componen
 @Component({
   selector: 'app-medicines-search',
   standalone: true,
-  imports: [CommonModule, SearchPageComponent, MedicinesWizardComponent],
+  imports: [CommonModule, QtmButtonComponent, SearchPageComponent, MedicinesWizardComponent],
   template: `
+    <div class="medicine-catalog-toolbar search-header-actions">
+      <qtm-button
+        variant="outline"
+        [routerLink]="['/dashboard/medicines/associations']"
+        [label]="t('medicines.associations.open')"
+      ></qtm-button>
+      <qtm-button
+        variant="primary"
+        [disabled]="importing"
+        [label]="t(importing ? 'medicines.import.running' : 'medicines.import.action')"
+        (btnClick)="importAifaCatalog()"
+      ></qtm-button>
+    </div>
+    <div *ngIf="importMessage" class="search-log-panel">
+      <div class="search-log-entry" [class.search-log-entry-success]="!importError" [class.search-log-entry-error]="importError">
+        {{ importMessage }}
+      </div>
+    </div>
     <app-search-page
       #searchPage
       [titleKey]="'medicines.search.title'"
@@ -28,6 +49,7 @@ import { MedicinesWizardComponent } from '../medicines/medicines-wizard.componen
       [filters]="searchFilters"
       [columns]="searchColumns"
       [fetchResults]="fetchMedicines"
+      [useSharedButtons]="true"
       [showDeleteAction]="true"
       (createAction)="openCreate()"
       (editAction)="openEdit($event)"
@@ -73,7 +95,46 @@ export class MedicinesSearchComponent {
   wizardMode: 'create' | 'edit' | 'view' = 'create';
   selectedMedicineId: number | null = null;
 
-  constructor(private readonly medicineApiService: MedicineApiService) {}
+  translations: Record<string, string> = {};
+  importing = false;
+  importMessage = '';
+  importError = false;
+
+  constructor(
+    private readonly medicineApiService: MedicineApiService,
+    private readonly i18nPropertiesService: I18nPropertiesService
+  ) {
+    this.i18nPropertiesService.loadTranslations(navigator.language).subscribe((translations) => {
+      this.translations = translations;
+    });
+  }
+
+  t(key: string): string {
+    return this.translations[key] ?? key;
+  }
+
+  importAifaCatalog(): void {
+    if (this.importing) {
+      return;
+    }
+    this.importing = true;
+    this.importMessage = '';
+    this.medicineApiService.importAifaCatalog().subscribe({
+      next: (result: MedicineImportResult) => {
+        this.importMessage = this.t('medicines.import.success').replace('{count}', String(result.importedRows));
+        this.importError = false;
+        this.importing = false;
+        this.searchPage?.reload(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.importMessage = typeof error.error?.detail === 'string'
+          ? error.error.detail
+          : this.t('medicines.import.error');
+        this.importError = true;
+        this.importing = false;
+      }
+    });
+  }
 
   openCreate(): void {
     this.selectedMedicineId = null;
