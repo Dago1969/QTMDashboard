@@ -31,6 +31,8 @@ public class PatientMapper {
         entity.setIdentificationDocumentReference(dto.getIdentificationDocumentReference());
         entity.setDataProcessingConsent(dto.getDataProcessingConsent());
         entity.setDataProcessingConsentDateTime(dto.getDataProcessingConsentDateTime());
+        entity.setDataProcessingConsentRevocationDateTime(dto.getDataProcessingConsentRevocationDateTime());
+        entity.setDataProcessingConsentRevocationReason(dto.getDataProcessingConsentRevocationReason());
         entity.setDataProcessingConsentRevocationLog(dto.getDataProcessingConsentRevocationLog());
         entity.setAdditionalConsents(dto.getAdditionalConsents());
         entity.setTherapyStatus(dto.getTherapyStatus());
@@ -73,6 +75,10 @@ public class PatientMapper {
         dto.setIdentificationDocumentReference(entity.getIdentificationDocumentReference());
         dto.setDataProcessingConsent(entity.getDataProcessingConsent());
         dto.setDataProcessingConsentDateTime(entity.getDataProcessingConsentDateTime());
+        dto.setDataProcessingConsentRevocationDateTime(entity.getDataProcessingConsentRevocationDateTime());
+        dto.setConsentRevoked(Boolean.FALSE.equals(entity.getDataProcessingConsent())
+                && entity.getDataProcessingConsentRevocationDateTime() != null);
+        dto.setDataProcessingConsentRevocationReason(entity.getDataProcessingConsentRevocationReason());
         dto.setDataProcessingConsentRevocationLog(entity.getDataProcessingConsentRevocationLog());
         dto.setAdditionalConsents(entity.getAdditionalConsents());
         dto.setTherapyStatus(entity.getTherapyStatus());

@@ -62,4 +62,6 @@
 
     <include file="20261010-03-restore-tripodi-superadmin-pilota.yaml" relativeToChangelogFile="true"/>
 
+    <include file="20261012-01-add-patient-consent-revocation-fields.yaml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

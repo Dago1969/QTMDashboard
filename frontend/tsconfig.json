@@ -19,12 +19,7 @@
     "lib": [
       "ES2022",
       "dom"
-    ],
-    "paths": {
-      "@angular/*": [
-        "./node_modules/@angular/*"
-      ]
-    }
+    ]
   },
   "angularCompilerOptions": {
     "strictInjectionParameters": true,
