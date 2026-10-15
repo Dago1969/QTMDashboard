@@ -127,5 +127,4 @@
     <factorypathentry kind="VARJAR" id="M2_REPO/com/sun/istack/istack-commons-tools/4.1.2/istack-commons-tools-4.1.2.jar" enabled="true" runInBatchMode="false"/>
     <factorypathentry kind="VARJAR" id="M2_REPO/com/sun/xml/bind/external/relaxng-datatype/4.0.5/relaxng-datatype-4.0.5.jar" enabled="true" runInBatchMode="false"/>
     <factorypathentry kind="VARJAR" id="M2_REPO/com/sun/xml/bind/external/rngom/4.0.5/rngom-4.0.5.jar" enabled="true" runInBatchMode="false"/>
-    <factorypathentry kind="PLUGIN" id="org.eclipse.jst.ws.annotations.core" enabled="false" runInBatchMode="false"/>
 </factorypath>

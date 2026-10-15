@@ -60,13 +60,13 @@ import { MedicineApiService, MedicineDto, MedicinePage, MedicineSearchFilters } 
                   <qtm-button
                     variant="primary"
                     [label]="t('medicines.associations.associate')"
-                    [disabled]="savingId === medicine.id || medicine.visibleForTenants === true"
+                    [disabled]="savingCodiceAic === medicine.codiceAic || medicine.visibleForTenants === true"
                     (btnClick)="updateVisibility(medicine, true)"
                   ></qtm-button>
                   <qtm-button
                     variant="outline"
                     [label]="t('medicines.associations.dissociate')"
-                    [disabled]="savingId === medicine.id || medicine.visibleForTenants !== true"
+                    [disabled]="savingCodiceAic === medicine.codiceAic || medicine.visibleForTenants !== true"
                     (btnClick)="updateVisibility(medicine, false)"
                   ></qtm-button>
                 </div>
@@ -103,7 +103,7 @@ export class MedicineAssociationsComponent implements OnInit {
   medicines: MedicineDto[] = [];
   page: MedicinePage = { content: [], number: 0, totalPages: 0, totalElements: 0 };
   loading = false;
-  savingId: number | null = null;
+  savingCodiceAic: string | null = null;
   message = '';
   hasError = false;
 
@@ -139,22 +139,22 @@ export class MedicineAssociationsComponent implements OnInit {
   }
 
   updateVisibility(medicine: MedicineDto, visibleForTenants: boolean): void {
-    if (medicine.id === undefined || this.savingId !== null) {
+    if (!medicine.codiceAic || this.savingCodiceAic !== null) {
       return;
     }
 
     const previousValue = medicine.visibleForTenants ?? false;
-    this.savingId = medicine.id;
-    this.medicineApiService.updateTenantVisibility(medicine.id, visibleForTenants).subscribe({
+    this.savingCodiceAic = medicine.codiceAic;
+    this.medicineApiService.updateTenantVisibility(medicine.codiceAic, visibleForTenants).subscribe({
       next: (updated) => {
         medicine.visibleForTenants = updated.visibleForTenants;
-        this.savingId = null;
+        this.savingCodiceAic = null;
         this.message = this.t('medicines.associations.saved');
         this.hasError = false;
       },
       error: () => {
         medicine.visibleForTenants = previousValue;
-        this.savingId = null;
+        this.savingCodiceAic = null;
         this.message = this.t('medicines.associations.error');
         this.hasError = true;
       }

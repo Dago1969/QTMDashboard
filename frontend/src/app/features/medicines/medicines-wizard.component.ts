@@ -79,14 +79,14 @@ interface FormFolder {
           {{ t('wizard.actions.next') }}
         </button>
         <button *ngIf="isLastStep && !isViewMode" type="button" class="primary-btn" (click)="save()">
-          {{ t(medicineIdInput === null ? 'crud.actions.create' : 'crud.actions.update') }}
+          {{ t(medicineCodiceAicInput === null ? 'crud.actions.create' : 'crud.actions.update') }}
         </button>
       </div>
     </qtm-step-modal>
   `
 })
 export class MedicinesWizardComponent implements OnInit, OnDestroy {
-  @Input() medicineIdInput: number | null = null;
+  @Input() medicineCodiceAicInput: string | null = null;
   @Input() modeInput: 'create' | 'edit' | 'view' = 'create';
   @Output() readonly saved = new EventEmitter<void>();
   @Output() readonly cancelled = new EventEmitter<void>();
@@ -148,9 +148,9 @@ export class MedicinesWizardComponent implements OnInit, OnDestroy {
         next: (translationMap) => {
           this.translations = translationMap;
           this.isViewMode = this.modeInput === 'view';
-          this.pageTitleKey = this.isViewMode ? 'medicines.title.view' : this.medicineIdInput === null ? 'medicines.title.new' : 'medicines.title.edit';
-          if (this.medicineIdInput !== null) {
-            this.loadMedicine(this.medicineIdInput);
+          this.pageTitleKey = this.isViewMode ? 'medicines.title.view' : this.medicineCodiceAicInput === null ? 'medicines.title.new' : 'medicines.title.edit';
+          if (this.medicineCodiceAicInput !== null) {
+            this.loadMedicine(this.medicineCodiceAicInput);
           }
         }
       })
@@ -201,9 +201,9 @@ export class MedicinesWizardComponent implements OnInit, OnDestroy {
 
   save(): void {
     const payload = this.toPayload();
-    const request = this.medicineIdInput === null
+    const request = this.medicineCodiceAicInput === null
       ? this.medicineApiService.createMedicine(payload)
-      : this.medicineApiService.updateMedicine(this.medicineIdInput, payload);
+      : this.medicineApiService.updateMedicine(this.medicineCodiceAicInput, payload);
 
     this.subscriptions.add(
       request.subscribe({
@@ -216,9 +216,9 @@ export class MedicinesWizardComponent implements OnInit, OnDestroy {
     );
   }
 
-  private loadMedicine(id: number): void {
+  private loadMedicine(codiceAic: string): void {
     this.subscriptions.add(
-      this.medicineApiService.getMedicine(id).subscribe({
+      this.medicineApiService.getMedicine(codiceAic).subscribe({
         next: (medicine) => {
           this.model = {
             ...this.createEmptyModel(),

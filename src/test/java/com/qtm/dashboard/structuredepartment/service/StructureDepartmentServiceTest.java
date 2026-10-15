@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -79,6 +80,12 @@ class StructureDepartmentServiceTest {
                 .disciplina("Cardiologia")
                 .indirizzo("Via Reparti 1")
                 .build();
+        StructureDepartmentSourceDto unimportedDepartment = StructureDepartmentSourceDto.builder()
+                .id(12L)
+                .codiceStruttura("H001")
+                .codiceDisciplina("NEUR")
+                .disciplina("Neurologia")
+                .build();
         StructureDepartmentEntity localAssociation = StructureDepartmentEntity.builder()
                 .id(1L)
                 .codiceStruttura("H001")
@@ -96,8 +103,7 @@ class StructureDepartmentServiceTest {
                 .codiceStruttura("H001")
                 .struttura("Ospedale TICKET")
                 .build());
-        stubTicketDepartmentCatalog(sourceDepartment, StructureDepartmentSourceDto.builder()
-                .id(12L)
+        stubTicketDepartmentCatalog(sourceDepartment, unimportedDepartment, StructureDepartmentSourceDto.builder()
                 .codiceDisciplina("INCOMPLETE")
                 .build());
 
@@ -118,14 +124,22 @@ class StructureDepartmentServiceTest {
 
         var overview = service.findAllWithImportStatus("13", "201", "H001");
 
-        assertThat(overview).hasSize(1);
+        assertThat(overview).hasSize(2);
+        assertThat(overview.get(0).getId()).isEqualTo(localAssociation.getId());
         assertThat(overview.get(0).getCodiceRegione()).isEqualTo("13");
         assertThat(overview.get(0).getRegione()).isEqualTo("Abruzzo");
         assertThat(overview.get(0).getAsl()).isEqualTo("ASL L'Aquila");
         assertThat(overview.get(0).getStruttura()).isEqualTo("Ospedale San Test");
         assertThat(overview.get(0).getDisciplina()).isEqualTo("Cardiologia");
         assertThat(overview.get(0).getImported()).isTrue();
-        verify(structureDepartmentRepository).findAll();
+        assertThat(overview.get(1).getId()).isEqualTo(unimportedDepartment.getId());
+        assertThat(overview.get(1).getImported()).isFalse();
+
+        var importedOverview = service.findAllWithImportStatus("13", "201", "H001", true);
+
+        assertThat(importedOverview).hasSize(1);
+        assertThat(importedOverview.get(0).getId()).isEqualTo(localAssociation.getId());
+        verify(structureDepartmentRepository, times(2)).findAll();
     }
 
         @Test

@@ -80,13 +80,13 @@ public class MedicineController {
         return ResponseEntity.ok(medicineService.searchAssociations(criteria, page, size));
     }
 
-    @PutMapping("/{id}/tenant-visibility")
+    @PutMapping("/{codiceAic}/tenant-visibility")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_QTM')")
     public ResponseEntity<MedicineDto> updateTenantVisibility(
-            @PathVariable Long id,
+            @PathVariable String codiceAic,
             @RequestBody MedicineVisibilityRequestDto request
     ) {
-        return ResponseEntity.ok(medicineService.updateTenantVisibility(id, request.visibleForTenants()));
+        return ResponseEntity.ok(medicineService.updateTenantVisibility(codiceAic, request.visibleForTenants()));
     }
 
     @PostMapping("/import/aifa")
@@ -95,14 +95,9 @@ public class MedicineController {
         return ResponseEntity.ok(medicineService.importFromAifa());
     }
 
-    @GetMapping("/codice-aic/{codiceAic}")
+    @GetMapping({"/{codiceAic}", "/codice-aic/{codiceAic}"})
     public ResponseEntity<MedicineDto> findByCodiceAic(@PathVariable String codiceAic) {
         return ResponseEntity.ok(medicineService.findByCodiceAic(codiceAic));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<MedicineDto> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(medicineService.findById(id));
     }
 
     @PostMapping
@@ -110,14 +105,14 @@ public class MedicineController {
         return ResponseEntity.ok(medicineService.create(medicineDto));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<MedicineDto> update(@PathVariable Long id, @Valid @RequestBody MedicineDto medicineDto) {
-        return ResponseEntity.ok(medicineService.update(id, medicineDto));
+    @PutMapping("/{codiceAic}")
+    public ResponseEntity<MedicineDto> update(@PathVariable String codiceAic, @Valid @RequestBody MedicineDto medicineDto) {
+        return ResponseEntity.ok(medicineService.update(codiceAic, medicineDto));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        medicineService.delete(id);
+    @DeleteMapping("/{codiceAic}")
+    public ResponseEntity<Void> delete(@PathVariable String codiceAic) {
+        medicineService.delete(codiceAic);
         return ResponseEntity.noContent().build();
     }
 }

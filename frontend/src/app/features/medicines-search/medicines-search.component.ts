@@ -48,6 +48,7 @@ import { MedicinesWizardComponent } from '../medicines/medicines-wizard.componen
       [errorFallbackKey]="'medicines.error.search'"
       [filters]="searchFilters"
       [columns]="searchColumns"
+      [rowIdKey]="'codiceAic'"
       [fetchResults]="fetchMedicines"
       [useSharedButtons]="true"
       [showDeleteAction]="true"
@@ -59,7 +60,7 @@ import { MedicinesWizardComponent } from '../medicines/medicines-wizard.componen
 
     <app-medicines-wizard
       *ngIf="wizardOpen"
-      [medicineIdInput]="selectedMedicineId"
+      [medicineCodiceAicInput]="selectedMedicineCodiceAic"
       [modeInput]="wizardMode"
       (saved)="onSaved()"
       (cancelled)="closeWizard()"
@@ -93,7 +94,7 @@ export class MedicinesSearchComponent {
 
   wizardOpen = false;
   wizardMode: 'create' | 'edit' | 'view' = 'create';
-  selectedMedicineId: number | null = null;
+  selectedMedicineCodiceAic: string | null = null;
 
   translations: Record<string, string> = {};
   importing = false;
@@ -137,26 +138,26 @@ export class MedicinesSearchComponent {
   }
 
   openCreate(): void {
-    this.selectedMedicineId = null;
+    this.selectedMedicineCodiceAic = null;
     this.wizardMode = 'create';
     this.wizardOpen = true;
   }
 
   openEdit(event: SearchPageActionEvent<MedicineDto>): void {
-    this.selectedMedicineId = Number(event.id);
+    this.selectedMedicineCodiceAic = event.row.codiceAic;
     this.wizardMode = 'edit';
     this.wizardOpen = true;
   }
 
   openView(event: SearchPageActionEvent<MedicineDto>): void {
-    this.selectedMedicineId = Number(event.id);
+    this.selectedMedicineCodiceAic = event.row.codiceAic;
     this.wizardMode = 'view';
     this.wizardOpen = true;
   }
 
   closeWizard(): void {
     this.wizardOpen = false;
-    this.selectedMedicineId = null;
+    this.selectedMedicineCodiceAic = null;
   }
 
   onSaved(): void {
@@ -171,7 +172,7 @@ export class MedicinesSearchComponent {
       return;
     }
 
-    this.medicineApiService.deleteMedicine(Number(event.id)).subscribe({
+    this.medicineApiService.deleteMedicine(event.row.codiceAic).subscribe({
       next: () => {
         this.searchPage?.reload(false);
         this.searchPage?.showExternalMessage(this.searchPage.translate('medicines.success.delete'));

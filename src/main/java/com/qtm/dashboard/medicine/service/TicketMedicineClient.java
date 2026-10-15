@@ -118,9 +118,9 @@ public class TicketMedicineClient {
         });
     }
 
-    public MedicineDto updateTenantVisibility(Long id, boolean visible) {
+    public MedicineDto updateTenantVisibility(String codiceAic, boolean visible) {
         return execute(() -> restClient.put()
-                .uri("/medicines/{id}/tenant-visibility", id)
+                .uri("/medicines/{codiceAic}/tenant-visibility", codiceAic)
                 .headers(this::applyForwardedHeaders)
                 .body(new MedicineVisibilityRequestDto(visible))
                 .retrieve()
@@ -137,15 +137,7 @@ public class TicketMedicineClient {
 
     public MedicineDto findByCodiceAic(String codiceAic) {
         return execute(() -> restClient.get()
-                .uri("/medicines/codice-aic/{codiceAic}", codiceAic)
-                .headers(this::applyForwardedHeaders)
-                .retrieve()
-                .body(MedicineDto.class));
-    }
-
-    public MedicineDto findById(Long id) {
-        return execute(() -> restClient.get()
-                .uri("/medicines/{id}", id)
+                .uri("/medicines/{codiceAic}", codiceAic)
                 .headers(this::applyForwardedHeaders)
                 .retrieve()
                 .body(MedicineDto.class));
@@ -160,18 +152,18 @@ public class TicketMedicineClient {
                 .body(MedicineDto.class));
     }
 
-    public MedicineDto update(Long id, MedicineDto medicineDto) {
+    public MedicineDto update(String codiceAic, MedicineDto medicineDto) {
         return execute(() -> restClient.put()
-                .uri("/medicines/{id}", id)
+                .uri("/medicines/{codiceAic}", codiceAic)
                 .headers(this::applyForwardedHeaders)
                 .body(medicineDto)
                 .retrieve()
                 .body(MedicineDto.class));
     }
 
-    public void delete(Long id) {
+    public void delete(String codiceAic) {
         execute(() -> restClient.delete()
-                .uri("/medicines/{id}", id)
+                .uri("/medicines/{codiceAic}", codiceAic)
                 .headers(this::applyForwardedHeaders)
                 .retrieve()
                 .toBodilessEntity());

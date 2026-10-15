@@ -53,10 +53,11 @@ public class StructureDepartmentController {
     public ResponseEntity<List<StructureDepartmentOverviewDto>> findAllWithImportStatus(
             @RequestParam(required = false) String regionCode,
             @RequestParam(required = false) String aslCode,
-            @RequestParam(required = false) String structureCode
+            @RequestParam(required = false) String structureCode,
+            @RequestParam(defaultValue = "false") boolean importedOnly
     ) {
         log.info("[StructureDepartmentController] GET /api/structure-departments/overview region={} asl={} structure={}", regionCode, aslCode, structureCode);
-        List<StructureDepartmentOverviewDto> result = structureDepartmentService.findAllWithImportStatus(regionCode, aslCode, structureCode);
+        List<StructureDepartmentOverviewDto> result = structureDepartmentService.findAllWithImportStatus(regionCode, aslCode, structureCode, importedOnly);
         log.info("[StructureDepartmentController] GET /api/structure-departments/overview returned {} records", result.size());
         return ResponseEntity.ok(result);
     }
