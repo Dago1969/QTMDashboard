@@ -20,12 +20,15 @@
     "@angular/cdk": "^18.2.11",
     "@angular/router": "18.2.11",
     "intl-tel-input": "^28.0.4",
-    "qtm-shared": "file:vendor/qtm-shared-0.0.2.tgz",
+    "qtm-shared": "file:vendor/qtm-shared-0.0.3.tgz",
     "rxjs": "7.8.1",
     "tslib": "2.7.0",
     "zone.js": "0.14.10"
     ,
     "ng-select2-component": "^17.2.10"
+  },
+  "overrides": {
+    "ngx-infinite-scroll": "18.0.0"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "18.2.9",

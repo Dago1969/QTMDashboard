@@ -12,7 +12,6 @@ const AUTO_DISMISS_DELAY_MS = 4000;
 type FieldType = 'text' | 'url';
 
 interface MedicineFormModel {
-  id?: number;
   codiceAic: string;
   codFarmaco: string;
   codConfezione: string;
@@ -141,7 +140,7 @@ export class MedicinesCrudComponent implements OnInit, OnDestroy {
   loading = false;
   isViewMode = false;
   isEditMode = false;
-  medicineId: number | null = null;
+  medicineCodiceAic: string | null = null;
   pageTitleKey = 'medicines.title.new';
   message = '';
   messageType: 'success' | 'error' = 'success';
@@ -164,16 +163,16 @@ export class MedicinesCrudComponent implements OnInit, OnDestroy {
           const mode = this.route.snapshot.data['mode'];
           this.isViewMode = mode === 'view';
 
-          const idParam = this.route.snapshot.paramMap.get('id');
-          if (!idParam) {
+          const codiceAicParam = this.route.snapshot.paramMap.get('codiceAic');
+          if (!codiceAicParam) {
             this.pageTitleKey = 'medicines.title.new';
             return;
           }
 
-          this.medicineId = Number(idParam);
+          this.medicineCodiceAic = codiceAicParam;
           this.isEditMode = true;
           this.pageTitleKey = this.isViewMode ? 'medicines.title.view' : 'medicines.title.edit';
-          this.loadMedicine(this.medicineId);
+          this.loadMedicine(this.medicineCodiceAic);
         }
       })
     );
@@ -198,16 +197,16 @@ export class MedicinesCrudComponent implements OnInit, OnDestroy {
 
   save(): void {
     const payload = this.toPayload();
-    const request = this.medicineId === null
+    const request = this.medicineCodiceAic === null
       ? this.medicineApiService.createMedicine(payload)
-      : this.medicineApiService.updateMedicine(this.medicineId, payload);
+      : this.medicineApiService.updateMedicine(this.medicineCodiceAic, payload);
 
     this.subscriptions.add(
       request.subscribe({
         next: () => {
           void this.router.navigate(['/medicines/search'], {
             state: {
-              flashMessage: this.t(this.medicineId === null ? 'medicines.success.create' : 'medicines.success.update'),
+              flashMessage: this.t(this.medicineCodiceAic === null ? 'medicines.success.create' : 'medicines.success.update'),
               flashMessageType: 'success'
             }
           });
@@ -223,10 +222,10 @@ export class MedicinesCrudComponent implements OnInit, OnDestroy {
     void this.router.navigateByUrl('/medicines/search');
   }
 
-  private loadMedicine(id: number): void {
+  private loadMedicine(codiceAic: string): void {
     this.loading = true;
     this.subscriptions.add(
-      this.medicineApiService.getMedicine(id).subscribe({
+      this.medicineApiService.getMedicine(codiceAic).subscribe({
         next: (medicine) => {
           this.model = {
             ...this.createEmptyModel(),

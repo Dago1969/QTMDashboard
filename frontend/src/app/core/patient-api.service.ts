@@ -28,6 +28,7 @@ export interface PatientDto {
   identificationDocumentReference?: string;
   dataProcessingConsent?: boolean;
   dataProcessingConsentDateTime?: string;
+  consentRevoked?: boolean;
   dataProcessingConsentRevocationLog?: string;
   additionalConsents?: string;
   therapyStatus?: string;

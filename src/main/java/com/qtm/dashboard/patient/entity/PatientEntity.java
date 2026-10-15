@@ -100,6 +100,12 @@ public class PatientEntity {
     @Column(name = "data_processing_consent_datetime")
     private LocalDateTime dataProcessingConsentDateTime;
 
+    @Column(name = "data_processing_consent_revocation_datetime")
+    private LocalDateTime dataProcessingConsentRevocationDateTime;
+
+    @Column(name = "data_processing_consent_revocation_reason", length = 4000, columnDefinition = "TEXT")
+    private String dataProcessingConsentRevocationReason;
+
     @Column(name = "data_processing_consent_revocation_log", length = 4000)
     private String dataProcessingConsentRevocationLog;
 

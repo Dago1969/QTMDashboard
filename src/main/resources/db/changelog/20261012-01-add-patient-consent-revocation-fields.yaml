@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20261012-01-add-patient-consent-revocation-datetime
+      author: copilot
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: patients
+          - not:
+              columnExists:
+                tableName: patients
+                columnName: data_processing_consent_revocation_datetime
+      changes:
+        - addColumn:
+            tableName: patients
+            columns:
+              - column:
+                  name: data_processing_consent_revocation_datetime
+                  type: DATETIME
+      rollback:
+        - dropColumn:
+            tableName: patients
+            columnName: data_processing_consent_revocation_datetime
+  - changeSet:
+      id: 20261012-02-add-patient-consent-revocation-reason
+      author: copilot
+      preConditions:
+        onFail: MARK_RAN
+        onError: HALT
+        and:
+          - tableExists:
+              tableName: patients
+          - not:
+              columnExists:
+                tableName: patients
+                columnName: data_processing_consent_revocation_reason
+      changes:
+        - addColumn:
+            tableName: patients
+            columns:
+              - column:
+                  name: data_processing_consent_revocation_reason
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: patients
+            columnName: data_processing_consent_revocation_reason

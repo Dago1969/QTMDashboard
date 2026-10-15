@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output, TemplateRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
-import { QtmButtonComponent } from 'qtm-shared';
+import { QtmButtonComponent, QtmConsentWarningBadgeComponent } from 'qtm-shared';
 import { I18nPropertiesService } from '../core/i18n-properties.service';
 
 const AUTO_DISMISS_DELAY_MS = 4000;
@@ -43,7 +43,7 @@ export interface SearchFilterChangeEvent {
 @Component({
   selector: 'app-search-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, QtmButtonComponent],
+  imports: [CommonModule, FormsModule, QtmButtonComponent, QtmConsentWarningBadgeComponent],
   template: `
     <section class="search-page modern-search">
       <div class="search-header dashboard-header">
@@ -170,7 +170,16 @@ export interface SearchFilterChangeEvent {
           <tbody>
             <tr *ngFor="let row of pagedResults()">
               <td *ngIf="!hideRowId">{{ getRowId(row) }}</td>
-              <td *ngFor="let column of displayColumns">{{ getCellValue(column, row) }}</td>
+              <td *ngFor="let column of displayColumns">
+                <ng-container *ngIf="showConsentWarning(column, row); else plainCell">
+                  <span class="search-patient-name-cell">{{ getCellValue(column, row) }}</span>
+                  <qtm-consent-warning-badge
+                    [consentRevoked]="true"
+                    [tooltip]="translate('patients.consentRevoked.warning')"
+                  />
+                </ng-container>
+                <ng-template #plainCell>{{ getCellValue(column, row) }}</ng-template>
+              </td>
               <td *ngIf="hasActions" class="actions">
                 <ng-container *ngTemplateOutlet="rowActionsTemplate; context: { $implicit: row }"></ng-container>
                 <button
@@ -389,6 +398,20 @@ export class SearchPageComponent<T = any> implements OnInit, OnDestroy {
     }
 
     return String(value);
+  }
+
+  showConsentWarning(column: SearchResultColumn<T>, row: T): boolean {
+    const rowData = row as Record<string, unknown>;
+    if (rowData['consentRevoked'] !== true) {
+      return false;
+    }
+
+    const hasFirstName = typeof rowData['firstName'] === 'string' && rowData['firstName'].trim().length > 0;
+    return column.key === 'patientDisplayName'
+      || column.key === 'patientFullName'
+      || column.key === 'patientName'
+      || column.key === 'firstName'
+      || (column.key === 'lastName' && !hasFirstName);
   }
 
   toActionEvent(row: T): SearchPageActionEvent<T> {

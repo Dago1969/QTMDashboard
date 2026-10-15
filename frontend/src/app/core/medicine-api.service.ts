@@ -5,7 +5,6 @@ import { catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface MedicineDto {
-  id?: number;
   codiceAic: string;
   codFarmaco: string;
   codConfezione: string;
@@ -71,8 +70,8 @@ export class MedicineApiService {
     );
   }
 
-  getMedicine(id: number): Observable<MedicineDto> {
-    return this.http.get<MedicineDto>(`${this.baseUrl}/${id}`).pipe(
+  getMedicine(codiceAic: string): Observable<MedicineDto> {
+    return this.http.get<MedicineDto>(`${this.baseUrl}/${encodeURIComponent(codiceAic)}`).pipe(
       catchError(this.handleError)
     );
   }
@@ -83,14 +82,14 @@ export class MedicineApiService {
     );
   }
 
-  updateMedicine(id: number, medicine: MedicineDto): Observable<MedicineDto> {
-    return this.http.put<MedicineDto>(`${this.baseUrl}/${id}`, medicine).pipe(
+  updateMedicine(codiceAic: string, medicine: MedicineDto): Observable<MedicineDto> {
+    return this.http.put<MedicineDto>(`${this.baseUrl}/${encodeURIComponent(codiceAic)}`, medicine).pipe(
       catchError(this.handleError)
     );
   }
 
-  deleteMedicine(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`).pipe(
+  deleteMedicine(codiceAic: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${encodeURIComponent(codiceAic)}`).pipe(
       catchError(this.handleError)
     );
   }
@@ -109,8 +108,8 @@ export class MedicineApiService {
     return this.http.get<MedicinePage>(`${this.baseUrl}/associations`, { params });
   }
 
-  updateTenantVisibility(id: number, visibleForTenants: boolean): Observable<MedicineDto> {
-    return this.http.put<MedicineDto>(`${this.baseUrl}/${id}/tenant-visibility`, { visibleForTenants });
+  updateTenantVisibility(codiceAic: string, visibleForTenants: boolean): Observable<MedicineDto> {
+    return this.http.put<MedicineDto>(`${this.baseUrl}/${encodeURIComponent(codiceAic)}/tenant-visibility`, { visibleForTenants });
   }
 
   private handleError(error: unknown) {

@@ -173,6 +173,12 @@ public class StructureDepartmentService {
 	@Transactional(readOnly = true)
 	public List<StructureDepartmentOverviewDto> findAllWithImportStatus(String regionCode, String aslCode,
 			String structureCode) {
+		return findAllWithImportStatus(regionCode, aslCode, structureCode, false);
+	}
+
+	@Transactional(readOnly = true)
+	public List<StructureDepartmentOverviewDto> findAllWithImportStatus(String regionCode, String aslCode,
+			String structureCode, boolean importedOnly) {
 		log.info("[StructureDepartmentService] overview region={} asl={} structure={}", regionCode, aslCode,
 				structureCode);
 
@@ -210,7 +216,7 @@ public class StructureDepartmentService {
 		log.info("[StructureDepartmentService] enriched overview rows={} importedKeys={}", overview.size(),
 				overview.stream().filter(row -> Boolean.TRUE.equals(row.getImported()))
 						.map(row -> buildAssociationKey(row.getCodiceStruttura(), row.getCodiceDisciplina())).toList());
-		return overview;
+		return importedOnly ? overview.stream().filter(row -> Boolean.TRUE.equals(row.getImported())).toList() : overview;
 	}
 
 	@Transactional
@@ -274,15 +280,18 @@ public class StructureDepartmentService {
 		RegionDto region = regionsByCode.get(normalizeCode(effectiveRegionCode));
 		String associationKey = buildAssociationKey(sourceDepartment.getCodiceStruttura(),
 				sourceDepartment.getCodiceDisciplina());
+		StructureDepartmentEntity localAssociation = localAssociationsByKey.get(associationKey);
 
-		return StructureDepartmentOverviewDto.builder().id(sourceDepartment.getId()).codiceRegione(effectiveRegionCode)
+		return StructureDepartmentOverviewDto.builder()
+				.id(localAssociation != null ? localAssociation.getId() : sourceDepartment.getId())
+				.codiceRegione(effectiveRegionCode)
 				.regione(region != null ? region.getName() : null).codiceAsl(resolvedAslCode)
 				.asl(asl != null ? asl.getDenominazioneAzienda() : null)
 				.codiceStruttura(sourceDepartment.getCodiceStruttura())
 				.struttura(hospital != null ? hospital.getStruttura() : null)
 				.codiceDisciplina(sourceDepartment.getCodiceDisciplina()).disciplina(sourceDepartment.getDisciplina())
 				.descrizioneDisciplina(sourceDepartment.getDescrizioneDisciplina())
-				.indirizzo(sourceDepartment.getIndirizzo()).imported(localAssociationsByKey.containsKey(associationKey))
+				.indirizzo(sourceDepartment.getIndirizzo()).imported(localAssociation != null)
 				.build();
 	}
 

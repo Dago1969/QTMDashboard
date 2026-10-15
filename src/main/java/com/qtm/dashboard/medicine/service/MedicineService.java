@@ -28,10 +28,6 @@ public class MedicineService {
         return ticketMedicineClient.search(criteria);
     }
 
-    public MedicineDto findById(Long id) {
-        return ticketMedicineClient.findById(id);
-    }
-
     public MedicineDto findByCodiceAic(String codiceAic) {
         return ticketMedicineClient.findByCodiceAic(codiceAic);
     }
@@ -48,16 +44,16 @@ public class MedicineService {
         return ticketMedicineClient.searchAssociations(criteria, page, size);
     }
 
-    public MedicineDto updateTenantVisibility(Long id, boolean visible) {
-        return ticketMedicineClient.updateTenantVisibility(id, visible);
+    public MedicineDto updateTenantVisibility(String codiceAic, boolean visible) {
+        return ticketMedicineClient.updateTenantVisibility(codiceAic, visible);
     }
 
-    public MedicineDto update(Long id, MedicineDto medicineDto) {
-        return ticketMedicineClient.update(id, medicineDto);
+    public MedicineDto update(String codiceAic, MedicineDto medicineDto) {
+        return ticketMedicineClient.update(codiceAic, medicineDto);
     }
 
-    public void delete(Long id) {
-        ticketMedicineClient.delete(id);
+    public void delete(String codiceAic) {
+        ticketMedicineClient.delete(codiceAic);
     }
 
     public MedicineImportResultDto importFromAifa() {
